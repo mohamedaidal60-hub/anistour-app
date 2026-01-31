@@ -12,11 +12,12 @@ import NotificationCenter from './components/NotificationCenter.tsx';
 import Archives from './components/Archives.tsx';
 import UserManagement from './components/UserManagement.tsx';
 import Journal from './components/Journal.tsx';
-import { Cloud, RefreshCw, Loader2 } from 'lucide-react';
+import { Cloud, RefreshCw, Loader2, Menu } from 'lucide-react';
 
 const App: React.FC = () => {
   const store = useFleetStore();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   if (!store.isDataLoaded) {
     return (
@@ -28,7 +29,7 @@ const App: React.FC = () => {
   }
 
   if (!store.currentUser) {
-    return <Login onLogin={store.setCurrentUser} users={store.users} appLogo={store.appLogo} />;
+    return <Login onLogin={store.setCurrentUser} users={store.users} appLogo="/logo.png" />;
   }
 
   const renderContent = () => {
@@ -47,48 +48,67 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-neutral-950 text-neutral-100 overflow-hidden">
-      <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        role={store.currentUser.role} 
-        userName={store.currentUser.name}
-        appLogo={store.appLogo}
-        onLogout={() => store.setCurrentUser(null)}
-      />
-      <main className="flex-1 flex flex-col overflow-auto relative custom-scrollbar bg-neutral-950">
+    <div className="flex h-screen bg-neutral-950 text-neutral-100 overflow-hidden relative">
+      {/* Mobile Overlay */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/80 z-40 lg:hidden backdrop-blur-sm"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar - Responsive */}
+      <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <Sidebar
+          activeTab={activeTab}
+          setActiveTab={(tab) => { setActiveTab(tab); setIsSidebarOpen(false); }}
+          role={store.currentUser.role}
+          userName={store.currentUser.name}
+          appLogo="/logo.png"
+          onLogout={() => store.setCurrentUser(null)}
+          onClose={() => setIsSidebarOpen(false)}
+        />
+      </div>
+
+      <main className="flex-1 flex flex-col overflow-auto relative custom-scrollbar bg-neutral-950 w-full">
         <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
-        
+
         <header className="p-4 border-b border-neutral-800 flex justify-between items-center sticky top-0 bg-neutral-950/80 backdrop-blur-xl z-30">
           <div className="flex items-center gap-4">
-             <h1 className="text-xl font-black tracking-tighter uppercase text-neutral-100">
-               {activeTab === 'dashboard' ? 'Tableau de Bord' : 
-                activeTab === 'vehicles' ? 'Parc Automobile' :
-                activeTab === 'entry' ? 'Opérations' :
-                activeTab === 'journal' ? 'Journal' :
-                activeTab === 'maintenance' ? 'Entretiens' :
-                activeTab === 'validation' ? 'Validation' :
-                activeTab === 'notifications' ? 'Alertes' : 
-                activeTab === 'users' ? 'Paramètres' : 'Archives'}
-             </h1>
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="lg:hidden p-2 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-lg transition-colors"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            <h1 className="text-xl font-black tracking-tighter uppercase text-neutral-100 truncate">
+              {activeTab === 'dashboard' ? 'Tableau de Bord' :
+                activeTab === 'vehicles' ? 'Parc Auto' :
+                  activeTab === 'entry' ? 'Opérations' :
+                    activeTab === 'journal' ? 'Journal' :
+                      activeTab === 'maintenance' ? 'Entretiens' :
+                        activeTab === 'validation' ? 'Validation' :
+                          activeTab === 'notifications' ? 'Alertes' :
+                            activeTab === 'users' ? 'Paramètres' : 'Archives'}
+            </h1>
           </div>
-          
-          <div className="flex items-center space-x-4">
-             <div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 border rounded-xl transition-all ${store.isCloudSyncing ? 'bg-amber-950/20 border-amber-900/50 text-amber-500' : 'bg-emerald-950/20 border-emerald-900/50 text-emerald-500'}`}>
-                {store.isCloudSyncing ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Cloud className="w-3.5 h-3.5" />
-                )}
-                <span className="text-[10px] font-black uppercase tracking-widest">
-                  {store.isCloudSyncing ? 'Sync...' : 'Cloud Online'}
-                </span>
-             </div>
-             <span className="px-3 py-1 bg-neutral-800 text-neutral-400 border border-neutral-700 rounded-lg text-xs font-bold uppercase tracking-widest">{store.currentUser.role}</span>
+
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            <div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 border rounded-xl transition-all ${store.isCloudSyncing ? 'bg-amber-950/20 border-amber-900/50 text-amber-500' : 'bg-emerald-950/20 border-emerald-900/50 text-emerald-500'}`}>
+              {store.isCloudSyncing ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Cloud className="w-3.5 h-3.5" />
+              )}
+              <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline">
+                {store.isCloudSyncing ? 'Sync...' : 'Online'}
+              </span>
+            </div>
+            <span className="px-3 py-1 bg-neutral-800 text-neutral-400 border border-neutral-700 rounded-lg text-xs font-bold uppercase tracking-widest">{store.currentUser.role}</span>
           </div>
         </header>
 
-        <div className="p-6 relative z-10 max-w-[1600px] mx-auto w-full">
+        <div className="p-4 sm:p-6 relative z-10 w-full mx-auto max-w-[1600px]">
           {renderContent()}
         </div>
       </main>

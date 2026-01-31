@@ -33,16 +33,16 @@ const Login: React.FC<LoginProps> = ({ onLogin, users, appLogo }) => {
         <div className="bg-neutral-900 border border-neutral-800 rounded-3xl shadow-2xl p-8 space-y-8 backdrop-blur-sm">
           <div className="text-center">
             <div className="w-28 h-28 mx-auto mb-6 relative">
-               {appLogo ? (
-                 <img src={appLogo} alt="Anistour Logo" className="w-full h-full object-contain rounded-2xl shadow-lg border border-neutral-800 bg-neutral-950 p-2" />
-               ) : (
-                 <div className="w-full h-full bg-neutral-950 border border-neutral-800 rounded-2xl flex items-center justify-center">
-                    <Car className="w-12 h-12 text-red-600" />
-                 </div>
-               )}
-               <div className="absolute -bottom-2 -right-2 bg-red-600 p-1.5 rounded-lg border border-neutral-900">
-                  <Lock className="w-4 h-4 text-white" />
-               </div>
+              {appLogo ? (
+                <img src={appLogo} alt="Anistour Logo" className="w-full h-full object-contain rounded-2xl shadow-lg border border-neutral-800 bg-neutral-950 p-2" />
+              ) : (
+                <div className="w-full h-full bg-neutral-950 border border-neutral-800 rounded-2xl flex items-center justify-center">
+                  <Car className="w-12 h-12 text-red-600" />
+                </div>
+              )}
+              <div className="absolute -bottom-2 -right-2 bg-red-600 p-1.5 rounded-lg border border-neutral-900">
+                <Lock className="w-4 h-4 text-white" />
+              </div>
             </div>
             <h2 className="text-2xl font-black text-neutral-100 uppercase tracking-tighter">Anistour Fleet</h2>
             <p className="text-neutral-500 mt-2 text-sm">Gestion de Parc Automobile • Algérie</p>
@@ -60,10 +60,10 @@ const Login: React.FC<LoginProps> = ({ onLogin, users, appLogo }) => {
               <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest px-1">Adresse Email</label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
-                <input 
-                  type="email" 
+                <input
+                  type="email"
                   className="w-full bg-neutral-950 border border-neutral-800 focus:border-red-600 focus:ring-1 focus:ring-red-600 outline-none p-4 pl-12 rounded-xl text-sm transition-all text-neutral-100"
-                  placeholder="anisbelhadjamara@gmail.com"
+                  placeholder="votre.email@anistour.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -75,8 +75,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, users, appLogo }) => {
               <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest px-1">Mot de passe</label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
-                <input 
-                  type="password" 
+                <input
+                  type="password"
                   className="w-full bg-neutral-950 border border-neutral-800 focus:border-red-600 focus:ring-1 focus:ring-red-600 outline-none p-4 pl-12 rounded-xl text-sm transition-all text-neutral-100"
                   placeholder="••••••••"
                   value={password}
@@ -86,7 +86,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, users, appLogo }) => {
               </div>
             </div>
 
-            <button 
+            <button
               type="submit"
               className="w-full group flex items-center justify-center gap-2 bg-red-700 hover:bg-red-600 text-white font-bold py-4 rounded-2xl shadow-xl shadow-red-900/20 transition-all hover:-translate-y-0.5"
             >

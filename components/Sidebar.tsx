@@ -1,16 +1,17 @@
 import React from 'react';
 import { UserRole } from '../types.ts';
-import { 
-  LayoutDashboard, 
-  Car, 
-  PlusCircle, 
-  Wrench, 
-  CheckCircle, 
-  Bell, 
-  Archive, 
+import {
+  LayoutDashboard,
+  Car,
+  PlusCircle,
+  Wrench,
+  CheckCircle,
+  Bell,
+  Archive,
   Users,
   LogOut,
-  ListOrdered
+  ListOrdered,
+  X
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -20,9 +21,10 @@ interface SidebarProps {
   userName: string;
   appLogo?: string;
   onLogout: () => void;
+  onClose?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, role, userName, appLogo, onLogout }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, role, userName, appLogo, onLogout, onClose }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Tableau de Bord', icon: LayoutDashboard, roles: [UserRole.ADMIN, UserRole.AGENT] },
     { id: 'vehicles', label: 'Gestion Véhicules', icon: Car, roles: [UserRole.ADMIN, UserRole.AGENT] },
@@ -37,15 +39,23 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, role, userNa
 
   return (
     <aside className="w-64 bg-neutral-950 border-r border-neutral-800 flex flex-col h-screen shrink-0 overflow-hidden">
-      <div className="p-6 shrink-0">
+      <div className="p-6 shrink-0 relative">
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 lg:hidden p-2 text-neutral-500 hover:text-white"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        )}
         <div className="w-full aspect-square relative mb-6 rounded-2xl overflow-hidden border border-neutral-800 shadow-xl bg-neutral-950 flex items-center justify-center p-3">
-           {appLogo ? (
-             <img src={appLogo} alt="Anistour Logo" className="max-w-full max-h-full object-contain" />
-           ) : (
-             <div className="text-red-600 font-black text-xs text-center uppercase tracking-tighter">
-                Anistour<br/>Fleet
-             </div>
-           )}
+          {appLogo ? (
+            <img src="/logo.png" alt="Anistour Logo" className="max-w-full max-h-full object-contain" />
+          ) : (
+            <div className="text-red-600 font-black text-xs text-center uppercase tracking-tighter">
+              Anistour<br />Fleet
+            </div>
+          )}
         </div>
         <div className="p-3 bg-neutral-900/50 rounded-xl border border-neutral-800">
           <p className="text-[9px] text-neutral-500 uppercase font-black tracking-widest mb-1">Utilisateur</p>
@@ -58,11 +68,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, role, userNa
           <button
             key={item.id}
             onClick={() => setActiveTab(item.id)}
-            className={`w-full flex items-center px-4 py-3 rounded-xl text-sm font-semibold transition-all group ${
-              activeTab === item.id 
-                ? 'bg-red-700 text-white shadow-lg' 
-                : 'text-neutral-500 hover:bg-neutral-900 hover:text-neutral-200'
-            }`}
+            className={`w-full flex items-center px-4 py-3 rounded-xl text-sm font-semibold transition-all group ${activeTab === item.id
+              ? 'bg-red-700 text-white shadow-lg'
+              : 'text-neutral-500 hover:bg-neutral-900 hover:text-neutral-200'
+              }`}
           >
             <item.icon className="w-5 h-5 mr-3 shrink-0" />
             {item.label}
