@@ -1,0 +1,7 @@
+{
+  "name": "Copy of Anistour - Fleet Manager",
+  "description": "A high-end vehicle management application for tracking revenue, expenses, maintenance, and fleet performance with role-based access.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
