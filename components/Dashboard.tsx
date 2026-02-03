@@ -14,7 +14,7 @@ const Dashboard: React.FC<DashboardProps> = ({ store }) => {
   const stats = store.getFinancialStats();
 
   const recentEntries = useMemo(() => {
-    return [...store.entries].sort((a,b) => b.date.localeCompare(a.date)).slice(0, 5);
+    return [...store.entries].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
   }, [store.entries]);
 
   const chartData = useMemo(() => {
@@ -46,10 +46,10 @@ const Dashboard: React.FC<DashboardProps> = ({ store }) => {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
-                  <XAxis dataKey="name" stroke="#525252" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700}} />
-                  <YAxis stroke="#525252" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700}} />
-                  <Tooltip 
-                    cursor={{fill: '#171717'}}
+                  <XAxis dataKey="name" stroke="#525252" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700 }} />
+                  <YAxis stroke="#525252" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700 }} />
+                  <Tooltip
+                    cursor={{ fill: '#171717' }}
                     contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid #262626', borderRadius: '12px' }}
                     itemStyle={{ color: '#f5f5f5', fontSize: '12px', fontWeight: 600 }}
                   />
@@ -62,7 +62,7 @@ const Dashboard: React.FC<DashboardProps> = ({ store }) => {
 
           <div className="bg-neutral-900/50 border border-neutral-800 p-6 rounded-3xl shadow-xl backdrop-blur-sm">
             <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-               <Clock className="w-5 h-5 text-neutral-400" /> Flux d'Opérations Récentes
+              <Clock className="w-5 h-5 text-neutral-400" /> Flux d'Opérations Récentes
             </h3>
             <div className="space-y-3">
               {recentEntries.map(entry => {
@@ -71,16 +71,16 @@ const Dashboard: React.FC<DashboardProps> = ({ store }) => {
                 return (
                   <div key={entry.id} className="flex items-center justify-between p-4 bg-neutral-950 border border-neutral-800 rounded-2xl hover:border-neutral-700 transition-all">
                     <div className="flex items-center gap-4">
-                       <div className={`p-2 rounded-xl ${isRevenue ? 'bg-emerald-950/30 text-emerald-500' : 'bg-red-950/30 text-red-500'}`}>
-                          {isRevenue ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownLeft className="w-5 h-5" />}
-                       </div>
-                       <div>
-                          <p className="text-sm font-bold text-neutral-200">{entry.designation}</p>
-                          <p className="text-[10px] text-neutral-500 uppercase font-black">{vehicle?.name || 'Agence'} • {new Date(entry.date).toLocaleDateString()}</p>
-                       </div>
+                      <div className={`p-2 rounded-xl ${isRevenue ? 'bg-emerald-950/30 text-emerald-500' : 'bg-red-950/30 text-red-500'}`}>
+                        {isRevenue ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownLeft className="w-5 h-5" />}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-neutral-200">{entry.designation}</p>
+                        <p className="text-[10px] text-neutral-500 uppercase font-black">{vehicle?.name || 'Agence'} • {new Date(entry.date).toLocaleDateString()}</p>
+                      </div>
                     </div>
                     <p className={`font-black ${isRevenue ? 'text-emerald-500' : 'text-red-500'}`}>
-                      {isRevenue ? '+' : '-'}{entry.amount.toLocaleString()} {CURRENCY}
+                      {isRevenue ? '+' : '-'}{(entry.amount ?? 0).toLocaleString()} {CURRENCY}
                     </p>
                   </div>
                 );
@@ -92,8 +92,8 @@ const Dashboard: React.FC<DashboardProps> = ({ store }) => {
         <div className="space-y-6">
           <div className="bg-neutral-900/50 border border-neutral-800 p-6 rounded-3xl shadow-xl backdrop-blur-sm space-y-4">
             <div className="flex justify-between items-center mb-2">
-               <h3 className="text-lg font-bold">Alertes KM Critiques</h3>
-               <span className="text-[10px] font-black text-red-500 animate-pulse">LIVE</span>
+              <h3 className="text-lg font-bold">Alertes KM Critiques</h3>
+              <span className="text-[10px] font-black text-red-500 animate-pulse">LIVE</span>
             </div>
             <div className="space-y-3">
               {store.notifications.filter(n => n.isCritical).slice(0, 5).map(n => (
@@ -121,7 +121,7 @@ const StatCard = ({ title, value, icon: Icon, color, unit = ` ${CURRENCY}` }: an
     </div>
     <p className="text-neutral-500 text-[10px] font-black uppercase tracking-widest mb-1">{title}</p>
     <p className="text-xl font-black tracking-tighter text-neutral-100">
-      {typeof value === 'number' ? value.toLocaleString() : value}<span className="text-[10px] font-medium ml-1 text-neutral-500 uppercase">{unit}</span>
+      {typeof value === 'number' ? (value ?? 0).toLocaleString() : value}<span className="text-[10px] font-medium ml-1 text-neutral-500 uppercase">{unit}</span>
     </p>
   </div>
 );

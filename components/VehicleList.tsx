@@ -56,7 +56,7 @@ const VehicleList: React.FC<VehicleListProps> = ({ store }) => {
               />
               <div className="absolute top-4 left-4">
                 <span className="px-3 py-1 bg-neutral-950/80 backdrop-blur-md rounded-lg text-[10px] font-black uppercase border border-white/5 shadow-xl">
-                  {vehicle.lastMileage.toLocaleString()} KM
+                  {(vehicle.lastMileage ?? 0).toLocaleString()} KM
                 </span>
               </div>
               <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-neutral-950 to-transparent">
@@ -80,7 +80,7 @@ const VehicleList: React.FC<VehicleListProps> = ({ store }) => {
                     return (
                       <div key={cfg.type} className={`px-2 py-1.5 rounded-lg border flex flex-col ${isNear ? 'bg-red-950/20 border-red-900/50' : 'bg-neutral-950 border-neutral-800'}`}>
                         <span className="text-[8px] font-black text-neutral-500 uppercase">{cfg.type}</span>
-                        <span className={`text-[10px] font-bold ${isNear ? 'text-red-500' : 'text-neutral-400'}`}>{cfg.nextDueKm?.toLocaleString()} KM</span>
+                        <span className={`text-[10px] font-bold ${isNear ? 'text-red-500' : 'text-neutral-400'}`}>{(cfg.nextDueKm ?? 0).toLocaleString()} KM</span>
                       </div>
                     );
                   })}
@@ -115,7 +115,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
 
   // Editing State
   const [editingConfig, setEditingConfig] = useState<boolean>(false);
-  const [tempConfigs, setTempConfigs] = useState<MaintenanceConfig[]>(vehicle.maintenanceConfigs);
+  const [tempConfigs, setTempConfigs] = useState<MaintenanceConfig[]>(vehicle.maintenanceConfigs || []);
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState('');
   const [editDesc, setEditDesc] = useState('');
@@ -217,7 +217,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                   )}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {(editingConfig ? tempConfigs : vehicle.maintenanceConfigs).map((cfg, idx) => (
+                  {(editingConfig ? tempConfigs : (vehicle.maintenanceConfigs || [])).map((cfg, idx) => (
                     <div key={cfg.type} className="bg-neutral-900 p-4 rounded-xl border border-neutral-800 flex flex-col gap-2">
                       <div className="flex justify-between items-center">
                         <span className="text-[10px] font-black uppercase text-neutral-500">{cfg.type}</span>
@@ -238,7 +238,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                             }}
                           />
                         ) : (
-                          <div className="text-xl font-black text-white">{cfg.nextDueKm.toLocaleString()} <span className="text-xs text-neutral-600">KM</span></div>
+                          <div className="text-xl font-black text-white">{(cfg.nextDueKm ?? 0).toLocaleString()} <span className="text-xs text-neutral-600">KM</span></div>
                         )}
                       </div>
                     </div>
@@ -267,7 +267,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                       {editingEntryId === e.id ? (
                         <div className="flex-1 flex gap-2 items-center">
                           <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)} className="w-24 bg-neutral-950 border border-neutral-700 p-2 rounded text-sm" />
-                          <input type="text" value={editDesc} onChange={e => setEditDesc(e.description || '')} className="flex-1 bg-neutral-950 border border-neutral-700 p-2 rounded text-sm" />
+                          <input type="text" value={editDesc} onChange={e => setEditDesc(e.target.value)} className="flex-1 bg-neutral-950 border border-neutral-700 p-2 rounded text-sm" />
                           <button onClick={() => handleUpdateEntry(e.id)} className="p-2 bg-emerald-900/30 text-emerald-500 rounded"><Save className="w-4 h-4" /></button>
                           <button onClick={() => setEditingEntryId(null)} className="p-2 bg-neutral-800 text-neutral-500 rounded"><X className="w-4 h-4" /></button>
                         </div>
@@ -287,7 +287,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                           <div className="flex items-center gap-4">
                             <div className="text-right">
                               <p className={`font-black ${e.type === EntryType.REVENUE ? 'text-emerald-500' : 'text-red-500'}`}>
-                                {e.type === EntryType.REVENUE ? '+' : '-'} {e.amount.toLocaleString()} <span className="text-[9px] text-neutral-600">{CURRENCY}</span>
+                                {e.type === EntryType.REVENUE ? '+' : '-'} {(e.amount ?? 0).toLocaleString()} <span className="text-[9px] text-neutral-600">{CURRENCY}</span>
                               </p>
                             </div>
 
@@ -295,7 +295,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                             {(isAdmin || store.currentUser?.name === e.agentName) && (
                               <div className="flex gap-1 ml-2">
                                 <button
-                                  onClick={() => { setEditingEntryId(e.id); setEditAmount(e.amount.toString()); setEditDesc(e.description || ''); }}
+                                  onClick={() => { setEditingEntryId(e.id); setEditAmount((e.amount ?? '').toString()); setEditDesc(e.description ?? ''); }}
                                   className="p-1.5 rounded hover:bg-neutral-800 text-neutral-600 hover:text-white"
                                 >
                                   <Edit2 className="w-3 h-3" />
@@ -326,16 +326,16 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                   <div className="absolute top-0 right-0 p-3 opacity-10"><Calculator className="w-24 h-24 text-white" /></div>
                   <h3 className="text-sm font-black text-neutral-500 uppercase tracking-widest mb-4">Marge Nette (Réelle)</h3>
                   <p className={`text-4xl font-black mb-2 ${netProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                    {netProfit > 0 ? '+' : ''}{netProfit.toLocaleString()} <span className="text-lg text-neutral-600">{CURRENCY}</span>
+                    {netProfit > 0 ? '+' : ''}{(netProfit ?? 0).toLocaleString()} <span className="text-lg text-neutral-600">{CURRENCY}</span>
                   </p>
                   <div className="grid grid-cols-2 gap-4 mt-6">
                     <div>
                       <p className="text-[10px] uppercase font-bold text-neutral-600">Revenus Totaux</p>
-                      <p className="text-lg font-bold text-emerald-500">{totalRevenue.toLocaleString()}</p>
+                      <p className="text-lg font-bold text-emerald-500">{(totalRevenue ?? 0).toLocaleString()}</p>
                     </div>
                     <div>
                       <p className="text-[10px] uppercase font-bold text-neutral-600">Charges Totales</p>
-                      <p className="text-lg font-bold text-red-500">{totalExpenses.toLocaleString()}</p>
+                      <p className="text-lg font-bold text-red-500">{(totalExpenses ?? 0).toLocaleString()}</p>
                     </div>
                   </div>
                 </div>
@@ -346,9 +346,9 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                     <span className="text-xs bg-neutral-900 px-2 py-1 rounded text-neutral-400">{monthsActive} Mois d'activité</span>
                   </div>
                   <p className={`text-3xl font-black ${monthlyProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                    {monthlyProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })} <span className="text-sm text-neutral-600">{CURRENCY} / Mois</span>
+                    {(monthlyProfit ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })} <span className="text-sm text-neutral-600">{CURRENCY} / Mois</span>
                   </p>
-                  <p className="text-xs text-neutral-600 mt-2 italic">Basé sur la date de mise en circulation ({new Date(vehicle.registrationDate).toLocaleDateString()})</p>
+                  <p className="text-xs text-neutral-600 mt-2 italic">Basé sur la date de mise en circulation ({new Date(vehicle.registrationDate ?? '').toLocaleDateString()})</p>
                 </div>
               </div>
 
@@ -361,7 +361,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase text-neutral-500 tracking-widest">Prix d'Achat (Initial)</label>
-                    <div className="text-2xl font-black text-neutral-300">{vehicle.purchasePrice.toLocaleString()} {CURRENCY}</div>
+                    <div className="text-2xl font-black text-neutral-300">{(vehicle.purchasePrice ?? 0).toLocaleString()} {CURRENCY}</div>
                   </div>
 
                   <div className="space-y-2">
@@ -378,7 +378,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                   <div className={`space-y-1 p-4 rounded-2xl border ${projectedResult >= 0 ? 'bg-emerald-950/20 border-emerald-900/50' : 'bg-red-950/20 border-red-900/50'}`}>
                     <label className="text-[10px] font-black uppercase text-neutral-500 tracking-widest">Résultat Projeté (Final)</label>
                     <div className={`text-2xl font-black ${projectedResult >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                      {projectedResult > 0 ? '+' : ''}{projectedResult.toLocaleString()} {CURRENCY}
+                      {projectedResult > 0 ? '+' : ''}{(projectedResult ?? 0).toLocaleString()} {CURRENCY}
                     </div>
                     <p className="text-[9px] text-neutral-500 font-medium">Bénéfice Net Exploit. + (Vente - Achat)</p>
                   </div>
