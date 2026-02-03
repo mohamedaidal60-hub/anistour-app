@@ -188,17 +188,6 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
                           placeholder="ex: Sid Ahmed (2 jours)"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Kilométrage Retour (Mise à jour)</label>
-                        <input
-                          required
-                          type="number"
-                          className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl outline-none focus:border-emerald-600 text-xl font-bold text-white placeholder-neutral-700"
-                          value={mileage}
-                          onChange={(e) => setMileage(e.target.value)}
-                          placeholder="ex: 12500"
-                        />
-                      </div>
                     </div>
                   ) : (
                     <>

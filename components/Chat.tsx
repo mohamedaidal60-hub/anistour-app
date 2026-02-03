@@ -17,16 +17,28 @@ const Chat: React.FC<ChatProps> = ({ store }) => {
     const currentUser = store.currentUser;
     if (!currentUser) return null;
 
-    const isAdmin = currentUser.role === UserRole.ADMIN;
-    const admins = store.users.filter(u => u.role === UserRole.ADMIN);
-    const agents = store.users.filter(u => u.role === UserRole.AGENT);
+    const isAdmin = currentUser.role === UserRole.ADMIN || (currentUser.role as string).toUpperCase() === 'ADMIN';
+
+    // List of users the current person can talk to
+    const availableRecipients = store.users.filter(u => {
+        if (u.id === currentUser.id) return false;
+
+        if (isAdmin) {
+            // Admin can talk to EVERYONE
+            return true;
+        } else {
+            // Agent can talk to ALL Admins
+            return (u.role === UserRole.ADMIN || (u.role as string).toUpperCase() === 'ADMIN' || (u.role as string).toUpperCase() === 'ADMINISTRATEUR');
+        }
+    });
 
     // Default recipient for agent: First Admin
     useEffect(() => {
+        const admins = store.users.filter(u => (u.role === UserRole.ADMIN || (u.role as string).toUpperCase() === 'ADMIN') && u.id !== currentUser.id);
         if (!isAdmin && admins.length > 0 && !selectedRecipientId) {
             setSelectedRecipientId(admins[0].id);
         }
-    }, [isAdmin, admins, selectedRecipientId]);
+    }, [isAdmin, store.users, selectedRecipientId, currentUser.id]);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -97,16 +109,16 @@ const Chat: React.FC<ChatProps> = ({ store }) => {
                         </button>
                     </div>
 
-                    {/* Recipient Selector (for Admin) */}
-                    {isAdmin && (
+                    {/* Recipient Selector (visible for Admin to pick any user, or for Agent to switch between admins if multiple) */}
+                    {availableRecipients.length > 0 && (
                         <div className="p-2 bg-neutral-950/50 border-b border-neutral-800 flex gap-2 overflow-x-auto custom-scrollbar">
-                            {agents.map(a => (
+                            {availableRecipients.map(a => (
                                 <button
                                     key={a.id}
                                     onClick={() => setSelectedRecipientId(a.id)}
                                     className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all whitespace-nowrap border ${selectedRecipientId === a.id ? 'bg-red-700 border-red-600 text-white' : 'bg-neutral-900 border-neutral-800 text-neutral-500 hover:text-neutral-300'}`}
                                 >
-                                    {a.name}
+                                    {a.name || 'Utilisateur'}
                                 </button>
                             ))}
                         </div>

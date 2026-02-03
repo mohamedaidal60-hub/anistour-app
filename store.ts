@@ -178,6 +178,11 @@ export function useFleetStore() {
     await supabase.from('vehicles').update(updatedV).eq('id', updatedV.id);
   };
 
+  const updateVehicleMileage = async (vehicleId: string, newMileage: number, agentName: string) => {
+    setVehicles(prev => prev.map(v => v.id === vehicleId ? { ...v, lastMileage: newMileage, mileageUpdatedBy: agentName } : v));
+    await supabase.from('vehicles').update({ lastMileage: newMileage, mileageUpdatedBy: agentName }).eq('id', vehicleId);
+  };
+
   const addEntry = async (e: FinancialEntry) => {
     // Attach agent name if not present
     if (!e.agentName && currentUser) e.agentName = currentUser.name;
@@ -272,14 +277,30 @@ export function useFleetStore() {
   };
 
   return {
-    vehicles, entries, globalExpenses, notifications, users, appLogo, currentUser, isCloudSyncing, isDataLoaded,
-    setCurrentUser, setAppLogo: (logo: string) => { setAppLogoState(logo); setLocal('logo', logo); },
-    addVehicle, updateVehicle, addEntry, addGlobalExpense, approveMaintenance,
+    vehicles,
+    entries,
+    globalExpenses,
+    messages,
+    notifications,
+    users,
+    appLogo,
+    currentUser,
+    isCloudSyncing,
+    isDataLoaded,
+    setCurrentUser,
+    setAppLogo: (logo: string) => { setAppLogoState(logo); setLocal('logo', logo); },
+    addVehicle,
+    updateVehicle,
+    updateVehicleMileage,
+    addEntry,
+    addGlobalExpense,
+    approveMaintenance,
     rejectMaintenance: async (id: string) => {
       setEntries(prev => prev.map(e => e.id === id ? { ...e, status: MaintenanceStatus.REJECTED } : e));
       await supabase.from('entries').update({ status: MaintenanceStatus.REJECTED }).eq('id', id);
     },
-    archiveVehicle, addUser: async (u: User) => { setUsers(prev => [...prev, u]); await supabase.from('users').insert([u]); },
+    archiveVehicle,
+    addUser: async (u: User) => { setUsers(prev => [...prev, u]); await supabase.from('users').insert([u]); },
     deleteUser: async (id: string) => { setUsers(prev => prev.filter(u => u.id !== id)); await supabase.from('users').delete().eq('id', id); },
     deleteEntry: async (id: string) => {
       setEntries(prev => prev.filter(e => e.id !== id));
@@ -289,11 +310,11 @@ export function useFleetStore() {
       setEntries(prev => prev.map(e => e.id === entry.id ? entry : e));
       await supabase.from('entries').update(entry).eq('id', entry.id);
     },
-    getFinancialStats, resetPassword: async (uid: string, pass: string) => {
+    getFinancialStats,
+    resetPassword: async (uid: string, pass: string) => {
       setUsers(prev => prev.map(u => u.id === uid ? { ...u, password: pass } : u));
       await supabase.from('users').update({ password: pass }).eq('id', uid);
     },
-    messages,
     sendMessage: async (m: Message) => {
       setMessages(prev => [...prev, m]);
       await supabase.from('messages').insert([m]);

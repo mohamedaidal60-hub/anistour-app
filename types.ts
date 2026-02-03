@@ -45,6 +45,7 @@ export interface Vehicle {
   purchasePrice: number;
   salePrice?: number;
   lastMileage: number;
+  mileageUpdatedBy?: string;
   isArchived: boolean;
   maintenanceConfigs: MaintenanceConfig[];
 }

@@ -40,55 +40,79 @@ const VehicleList: React.FC<VehicleListProps> = ({ store }) => {
         )}
       </div>
 
-      {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {activeVehicles.map(vehicle => (
-          <div
-            key={vehicle.id}
-            onClick={() => setSelectedVehicle(vehicle)}
-            className="bg-neutral-900/50 border border-neutral-800 rounded-3xl overflow-hidden shadow-xl hover:border-neutral-600 cursor-pointer transition-all group flex flex-col"
-          >
-            <div className="aspect-[16/10] relative overflow-hidden bg-neutral-950">
-              <img
-                src={vehicle.photo || 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=600&auto=format&fit=crop'}
-                alt={vehicle.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-80 group-hover:opacity-100"
-              />
-              <div className="absolute top-4 left-4">
-                <span className="px-3 py-1 bg-neutral-950/80 backdrop-blur-md rounded-lg text-[10px] font-black uppercase border border-white/5 shadow-xl">
-                  {(vehicle.lastMileage ?? 0).toLocaleString()} KM
-                </span>
-              </div>
-              <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-neutral-950 to-transparent">
-                <h3 className="font-black text-xl text-white uppercase tracking-tighter">{vehicle.name}</h3>
-              </div>
-            </div>
-            <div className="p-6 flex-1 flex flex-col">
-              <div className="flex justify-between items-start mb-6">
-                <div className="flex items-center gap-2 text-neutral-500">
-                  <Calendar className="w-3 h-3" />
-                  <p className="text-[10px] font-bold uppercase tracking-widest">{new Date(vehicle.registrationDate).toLocaleDateString('fr-FR')}</p>
-                </div>
-              </div>
+      {/* List View */}
+      <div className="bg-neutral-900/50 border border-neutral-800 rounded-3xl overflow-hidden shadow-2xl">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-neutral-950/50 text-neutral-500 border-b border-neutral-800">
+              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Véhicule</th>
+              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest hidden md:table-cell">Mise en Circ.</th>
+              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Kilométrage Actuel</th>
+              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest hidden lg:table-cell text-center">Alertes</th>
+              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-neutral-800">
+            {activeVehicles.map(vehicle => {
+              const alertCount = vehicle.maintenanceConfigs?.filter(cfg => (cfg.nextDueKm - vehicle.lastMileage) < 1000).length || 0;
 
-              <div className="space-y-4 flex-1">
-                {/* Maintenance Preview */}
-                <div className="flex flex-wrap gap-2">
-                  {vehicle.maintenanceConfigs?.slice(0, 3).map(cfg => {
-                    const kmLeft = cfg.nextDueKm - vehicle.lastMileage;
-                    const isNear = kmLeft < 1000;
-                    return (
-                      <div key={cfg.type} className={`px-2 py-1.5 rounded-lg border flex flex-col ${isNear ? 'bg-red-950/20 border-red-900/50' : 'bg-neutral-950 border-neutral-800'}`}>
-                        <span className="text-[8px] font-black text-neutral-500 uppercase">{cfg.type}</span>
-                        <span className={`text-[10px] font-bold ${isNear ? 'text-red-500' : 'text-neutral-400'}`}>{(cfg.nextDueKm ?? 0).toLocaleString()} KM</span>
+              return (
+                <tr
+                  key={vehicle.id}
+                  className="hover:bg-neutral-800/30 transition-all cursor-pointer group"
+                  onClick={() => setSelectedVehicle(vehicle)}
+                >
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl overflow-hidden bg-neutral-950 border border-neutral-800 shrink-0">
+                        <img src={vehicle.photo || '/car-placeholder.jpg'} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
+                      <div>
+                        <p className="font-black text-neutral-100 uppercase tracking-tighter">{vehicle.name}</p>
+                        <p className="text-[10px] text-neutral-500 font-bold uppercase">{vehicle.registrationNumber || 'Sans matricule'}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 hidden md:table-cell">
+                    <div className="flex items-center gap-2 text-neutral-400">
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span className="text-xs font-bold">{new Date(vehicle.registrationDate).toLocaleDateString('fr-FR')}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div>
+                      <p className="text-sm font-black text-white">{(vehicle.lastMileage ?? 0).toLocaleString()} <span className="text-[9px] text-neutral-600">KM</span></p>
+                      {vehicle.mileageUpdatedBy && (
+                        <p className="text-[8px] text-neutral-600 font-bold uppercase tracking-widest mt-0.5">Par {vehicle.mileageUpdatedBy}</p>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 hidden lg:table-cell text-center">
+                    {alertCount > 0 ? (
+                      <span className="px-2 py-1 bg-red-900/20 text-red-500 text-[10px] font-black rounded-lg border border-red-900/30">{alertCount} ALERTES</span>
+                    ) : (
+                      <span className="px-2 py-1 bg-emerald-900/20 text-emerald-500 text-[10px] font-black rounded-lg border border-emerald-900/30">OK</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setSelectedVehicle(vehicle); }}
+                      className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-neutral-700 hover:text-white"
+                    >
+                      Détails
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {activeVehicles.length === 0 && (
+          <div className="p-20 text-center">
+            <Car className="w-12 h-12 text-neutral-800 mx-auto mb-4" />
+            <p className="text-neutral-500 text-sm font-bold uppercase tracking-widest">Aucun véhicule trouvé</p>
           </div>
-        ))}
+        )}
       </div>
 
       {showAddForm && <AddVehicleModal onClose={() => setShowAddForm(false)} onAdd={store.addVehicle} />}
@@ -197,9 +221,45 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 bg-neutral-900">
+        <div className="flex-1 overflow-y-auto p-6 bg-neutral-900 custom-scrollbar">
           {tab === 'carnet' ? (
             <div className="space-y-6">
+              {/* Mileage Update Section */}
+              <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-5"><Ruler className="w-20 h-20 text-white" /></div>
+                <h3 className="text-sm font-black text-neutral-500 uppercase tracking-widest mb-4">Mise à jour Kilométrage</h3>
+                <div className="flex flex-col sm:flex-row items-end gap-4">
+                  <div className="flex-1 space-y-2">
+                    <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest px-1">Compteur Actuel (KM)</label>
+                    <input
+                      type="number"
+                      defaultValue={vehicle.lastMileage}
+                      id={`mileage-update-${vehicle.id}`}
+                      className="w-full bg-neutral-900 border border-neutral-800 p-4 rounded-2xl outline-none focus:border-red-600 text-2xl font-black text-white"
+                      placeholder="Nouveau kilométrage..."
+                    />
+                  </div>
+                  <button
+                    onClick={() => {
+                      const val = (document.getElementById(`mileage-update-${vehicle.id}`) as HTMLInputElement).value;
+                      if (val && Number(val) > vehicle.lastMileage) {
+                        store.updateVehicleMileage(vehicle.id, Number(val), store.currentUser?.name || 'Inconnu');
+                        alert('Kilométrage mis à jour avec succès !');
+                      } else {
+                        alert('Le nouveau kilométrage doit être supérieur à l\'ancien.');
+                      }
+                    }}
+                    className="px-8 py-5 bg-red-700 hover:bg-red-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-red-900/20"
+                  >
+                    Mettre à jour
+                  </button>
+                </div>
+                {vehicle.mileageUpdatedBy && (
+                  <p className="text-[10px] text-neutral-500 mt-4 font-bold uppercase tracking-widest">
+                    Dernière mise à jour par : <span className="text-neutral-300">{vehicle.mileageUpdatedBy}</span>
+                  </p>
+                )}
+              </div>
               {/* Maintenance Configs (Always visible) */}
               <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6">
                 <div className="flex justify-between items-center mb-6">
