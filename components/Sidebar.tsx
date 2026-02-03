@@ -11,7 +11,8 @@ import {
   Users,
   LogOut,
   ListOrdered,
-  X
+  X,
+  Wallet
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -32,6 +33,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, role, userNa
     { id: 'journal', label: 'Journal de Bord', icon: ListOrdered, roles: [UserRole.ADMIN, UserRole.AGENT] },
     { id: 'maintenance', label: 'Suivi Entretiens', icon: Wrench, roles: [UserRole.ADMIN, UserRole.AGENT] },
     { id: 'validation', label: 'Validations', icon: CheckCircle, roles: [UserRole.ADMIN] },
+    { id: 'charges', label: 'Charges Globales', icon: Wallet, roles: [UserRole.ADMIN] },
     { id: 'notifications', label: 'Alertes', icon: Bell, roles: [UserRole.ADMIN, UserRole.AGENT] },
     { id: 'archives', label: 'Archives Vente', icon: Archive, roles: [UserRole.ADMIN] },
     { id: 'users', label: 'Paramètres', icon: Users, roles: [UserRole.ADMIN] },

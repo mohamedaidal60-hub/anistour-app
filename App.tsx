@@ -12,6 +12,7 @@ import NotificationCenter from './components/NotificationCenter.tsx';
 import Archives from './components/Archives.tsx';
 import UserManagement from './components/UserManagement.tsx';
 import Journal from './components/Journal.tsx';
+import GlobalExpenses from './components/GlobalExpenses.tsx';
 import { Cloud, RefreshCw, Loader2, Menu } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -31,7 +32,6 @@ const App: React.FC = () => {
   if (!store.currentUser) {
     return <Login onLogin={store.setCurrentUser} users={store.users} appLogo="/logo.png" />;
   }
-
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard': return <Dashboard store={store} />;
@@ -42,10 +42,12 @@ const App: React.FC = () => {
       case 'validation': return store.currentUser?.role === UserRole.ADMIN ? <AdminValidation store={store} /> : <div className="p-20 text-center text-red-500 font-black">ACCÈS REFUSÉ</div>;
       case 'notifications': return <NotificationCenter store={store} />;
       case 'archives': return <Archives store={store} />;
+      case 'charges': return store.currentUser?.role === UserRole.ADMIN ? <GlobalExpenses store={store} /> : <div className="p-20 text-center text-red-500 font-black">ACCÈS REFUSÉ</div>;
       case 'users': return store.currentUser?.role === UserRole.ADMIN ? <UserManagement store={store} /> : <div className="p-20 text-center text-red-500 font-black">ACCÈS REFUSÉ</div>;
       default: return <Dashboard store={store} />;
     }
   };
+
 
   return (
     <div className="flex h-screen bg-neutral-950 text-neutral-100 overflow-hidden relative">

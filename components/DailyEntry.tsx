@@ -2,7 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { useFleetStore } from '../store.ts';
 import { EntryType, FinancialEntry, MaintenanceStatus, UserRole } from '../types.ts';
-import { PlusCircle, Info, Image as ImageIcon, CheckCircle2, ChevronDown, Camera, Upload, ShieldAlert } from 'lucide-react';
+import { ShieldAlert, CheckCircle2, Camera } from 'lucide-react';
 import { MAINTENANCE_TYPES, CURRENCY } from '../constants.ts';
 
 interface DailyEntryProps {
@@ -13,12 +13,12 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
   const [activeForm, setActiveForm] = useState<'REVENUE' | 'EXPENSE'>('REVENUE');
   const [vehicleId, setVehicleId] = useState('');
   const [amount, setAmount] = useState('');
-  const [clientName, setClientName] = useState('');
-  const [designation, setDesignation] = useState('');
-  const [info, setInfo] = useState('');
+  const [description, setDescription] = useState(''); // Unified description
   const [expenseType, setExpenseType] = useState<EntryType>(EntryType.EXPENSE_SIMPLE);
-  const [maintenanceType, setMaintenanceType] = useState('Vidange');
-  const [customNotifyKm, setCustomNotifyKm] = useState('');
+
+  // Default to first maintenance type if available, else 'Vidange'
+  const [maintenanceType, setMaintenanceType] = useState(MAINTENANCE_TYPES[0] || 'Vidange');
+
   const [mileage, setMileage] = useState('');
   const [proofPhoto, setProofPhoto] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -37,48 +37,30 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
     e.preventDefault();
     if (!amount) return;
 
-    let finalDesignation = activeForm === 'REVENUE' ? `Revenu: ${clientName}` : 
-                            (expenseType === EntryType.EXPENSE_MAINTENANCE ? `Entretien: ${maintenanceType}` : designation);
-
-    // If it's a custom maintenance, append the notification requirement to info
-    let finalInfo = info;
-    if (maintenanceType === 'Autres' && customNotifyKm) {
-      finalInfo = `${info} [Alerte à +${customNotifyKm} KM]`.trim();
+    // Construct the final description based on form type
+    let finalDescription = description;
+    if (activeForm === 'REVENUE') {
+      finalDescription = description ? `Revenu: ${description}` : 'Revenu Client';
+    } else if (expenseType === EntryType.EXPENSE_MAINTENANCE) {
+      finalDescription = `Entretien: ${maintenanceType} - ${description}`;
     }
 
     const entry: FinancialEntry = {
       id: Date.now().toString(),
       vehicleId: vehicleId || undefined,
-      date: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
+      date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
       amount: Number(amount),
       type: activeForm === 'REVENUE' ? EntryType.REVENUE : expenseType,
-      designation: finalDesignation,
-      clientName: activeForm === 'REVENUE' ? clientName : undefined,
-      info: finalInfo,
-      userName: store.currentUser?.name || 'Agent Anistour',
-      proofPhoto: proofPhoto || undefined,
+      description: finalDescription,
+      agentName: store.currentUser?.name || 'Agent Anistour',
+      mileageAtEntry: mileage ? Number(mileage) : undefined,
       status: activeForm === 'EXPENSE' && expenseType === EntryType.EXPENSE_MAINTENANCE ? MaintenanceStatus.PENDING : MaintenanceStatus.APPROVED,
       maintenanceType: expenseType === EntryType.EXPENSE_MAINTENANCE ? maintenanceType : undefined,
-      mileageAtEntry: mileage ? Number(mileage) : undefined,
+      // Optional/Legacy fields if needed by backend or types
+      designation: finalDescription,
+      userName: store.currentUser?.name || 'Agent',
+      createdAt: new Date().toISOString()
     };
-
-    // Update vehicle maintenance interval if "Autres" with custom KM
-    if (expenseType === EntryType.EXPENSE_MAINTENANCE && maintenanceType === 'Autres' && customNotifyKm) {
-      const vehicle = store.vehicles.find(v => v.id === vehicleId);
-      if (vehicle) {
-        const interval = Number(customNotifyKm);
-        const newConfigs = [...vehicle.maintenanceConfigs];
-        const existingIdx = newConfigs.findIndex(c => c.type === 'Autres');
-        if (existingIdx >= 0) {
-          newConfigs[existingIdx].intervalKm = interval;
-        } else {
-          newConfigs.push({ type: 'Autres', intervalKm: interval, lastKm: Number(mileage), nextNotifyKm: Number(mileage) + interval });
-        }
-        // This update will be finalized upon Admin approval in store logic, 
-        // but we store the intent in the entry description/info for the admin to see.
-      }
-    }
 
     await store.addEntry(entry);
     setSuccess(true);
@@ -91,30 +73,28 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
   const resetForm = () => {
     setVehicleId('');
     setAmount('');
-    setClientName('');
-    setDesignation('');
-    setInfo('');
+    setDescription('');
     setMileage('');
     setProofPhoto(null);
-    setCustomNotifyKm('');
   };
 
   return (
     <div className="max-w-4xl mx-auto">
       <div className="bg-neutral-900 border border-neutral-800 rounded-[2.5rem] shadow-2xl overflow-hidden backdrop-blur-sm relative">
         <div className="absolute top-4 right-8 flex items-center gap-2 opacity-50">
-           <ShieldAlert className="w-4 h-4 text-red-500" />
-           <span className="text-[10px] font-black uppercase tracking-widest">Saisie sécurisée</span>
+          <ShieldAlert className="w-4 h-4 text-red-500" />
+          <span className="text-[10px] font-black uppercase tracking-widest">Saisie sécurisée</span>
+          <span className="text-[10px] text-neutral-500 font-bold ml-2">Agent: {store.currentUser?.name}</span>
         </div>
 
         <div className="flex border-b border-neutral-800 bg-neutral-950/50 p-3">
-          <button 
+          <button
             onClick={() => { setActiveForm('REVENUE'); setExpenseType(EntryType.REVENUE); resetForm(); }}
             className={`flex-1 py-4 text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all ${activeForm === 'REVENUE' ? 'bg-emerald-700 text-white shadow-xl' : 'text-neutral-500 hover:text-neutral-300'}`}
           >
             Saisie Revenu
           </button>
-          <button 
+          <button
             onClick={() => { setActiveForm('EXPENSE'); setExpenseType(EntryType.EXPENSE_SIMPLE); resetForm(); }}
             className={`flex-1 py-4 text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all ${activeForm === 'EXPENSE' ? 'bg-red-700 text-white shadow-xl' : 'text-neutral-500 hover:text-neutral-300'}`}
           >
@@ -130,16 +110,18 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
               </div>
               <div className="text-center">
                 <p className="text-2xl font-black uppercase tracking-tighter text-emerald-500">Transmission Réussie</p>
-                <p className="text-neutral-500 mt-2 text-sm uppercase font-bold tracking-widest">Opération enregistrée par {store.currentUser?.name}</p>
+                <p className="text-neutral-500 mt-2 text-sm uppercase font-bold tracking-widest">Opération enregistrée</p>
               </div>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-12">
-              <div className="space-y-8">
+            <form onSubmit={handleSubmit} className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Left Column */}
                 <div className="space-y-6">
+                  {/* Vehicle Selector */}
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Véhicule concerné</label>
-                    <select 
+                    <select
                       className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl focus:border-red-600 outline-none text-sm font-bold text-neutral-200"
                       value={vehicleId}
                       onChange={(e) => setVehicleId(e.target.value)}
@@ -152,9 +134,10 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
                     </select>
                   </div>
 
+                  {/* Amount Input */}
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Montant ({CURRENCY})</label>
-                    <input 
+                    <input
                       required
                       type="number"
                       className={`w-full bg-neutral-950 border border-neutral-800 p-5 rounded-2xl text-4xl font-black outline-none transition-all ${activeForm === 'REVENUE' ? 'text-emerald-500 focus:border-emerald-600' : 'text-red-500 focus:border-red-600'}`}
@@ -164,89 +147,136 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
                     />
                   </div>
 
-                  {activeForm === 'REVENUE' ? (
+                  {/* Expense Type Toggle */}
+                  {activeForm === 'EXPENSE' && (
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Nom Complet du Client</label>
-                      <input required className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl outline-none focus:border-emerald-600 text-sm font-bold" value={clientName} onChange={(e) => setClientName(e.target.value)} />
+                      <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Type de dépense</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setExpenseType(EntryType.EXPENSE_SIMPLE)}
+                          className={`p-4 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${expenseType === EntryType.EXPENSE_SIMPLE ? 'bg-red-700 border-red-700 text-white' : 'bg-neutral-950 border-neutral-800 text-neutral-600'}`}
+                        >
+                          Charge Simple
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setExpenseType(EntryType.EXPENSE_MAINTENANCE)}
+                          className={`p-4 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${expenseType === EntryType.EXPENSE_MAINTENANCE ? 'bg-red-700 border-red-700 text-white' : 'bg-neutral-950 border-neutral-800 text-neutral-600'}`}
+                        >
+                          Entretien
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Column */}
+                <div className="space-y-6">
+                  {/* Variable Inputs based on Type */}
+                  {activeForm === 'REVENUE' ? (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Nom du Client / Détails</label>
+                        <input
+                          required
+                          className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl outline-none focus:border-emerald-600 text-sm font-bold"
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
+                          placeholder="ex: Sid Ahmed (2 jours)"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Kilométrage Retour (Mise à jour)</label>
+                        <input
+                          required
+                          type="number"
+                          className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl outline-none focus:border-emerald-600 text-xl font-bold text-white placeholder-neutral-700"
+                          value={mileage}
+                          onChange={(e) => setMileage(e.target.value)}
+                          placeholder="ex: 12500"
+                        />
+                      </div>
                     </div>
                   ) : (
                     <>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Catégorie de dépense</label>
-                        <div className="grid grid-cols-2 gap-3">
-                           <button type="button" onClick={() => setExpenseType(EntryType.EXPENSE_SIMPLE)} className={`p-4 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${expenseType === EntryType.EXPENSE_SIMPLE ? 'bg-red-700 border-red-700 text-white' : 'bg-neutral-950 border-neutral-800 text-neutral-600'}`}>Charge Simple</button>
-                           <button type="button" onClick={() => setExpenseType(EntryType.EXPENSE_MAINTENANCE)} className={`p-4 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${expenseType === EntryType.EXPENSE_MAINTENANCE ? 'bg-red-700 border-red-700 text-white' : 'bg-neutral-950 border-neutral-800 text-neutral-600'}`}>Entretien</button>
-                        </div>
-                      </div>
-                      {expenseType === EntryType.EXPENSE_SIMPLE ? (
-                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Désignation (ex: Loyer, Salaire)</label>
-                            <input required className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl outline-none focus:border-red-600 text-sm font-bold" value={designation} onChange={(e) => setDesignation(e.target.value)} />
-                         </div>
-                      ) : (
-                         <div className="space-y-2">
+                      {expenseType === EntryType.EXPENSE_MAINTENANCE ? (
+                        <div className="space-y-4">
+                          <div className="space-y-2">
                             <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Type d'Entretien</label>
-                            <select className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl focus:border-red-600 outline-none text-sm font-bold" value={maintenanceType} onChange={(e) => setMaintenanceType(e.target.value)}>
-                               {MAINTENANCE_TYPES.map(m => <option key={m} value={m}>{m}</option>)}
+                            <select
+                              className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl focus:border-red-600 outline-none text-sm font-bold"
+                              value={maintenanceType}
+                              onChange={(e) => setMaintenanceType(e.target.value)}
+                            >
+                              {MAINTENANCE_TYPES.map(m => <option key={m} value={m}>{m}</option>)}
                             </select>
-                            {maintenanceType === 'Autres' && (
-                              <div className="mt-4 p-4 bg-red-950/20 border border-red-900/50 rounded-2xl space-y-2 animate-in slide-in-from-top-2">
-                                <label className="text-[9px] font-black text-red-500 uppercase">Dans combien de KM notifier ?</label>
-                                <input 
-                                  required 
-                                  type="number" 
-                                  placeholder="ex: 15000" 
-                                  className="w-full bg-neutral-950 border border-red-900/30 p-3 rounded-xl text-sm font-black text-white" 
-                                  value={customNotifyKm}
-                                  onChange={(e) => setCustomNotifyKm(e.target.value)}
-                                />
-                              </div>
-                            )}
-                         </div>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Kilométrage Actuel (OBLIGATOIRE)</label>
+                            <input
+                              required
+                              type="number"
+                              className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl outline-none focus:border-red-600 text-xl font-bold text-white placeholder-neutral-700"
+                              value={mileage}
+                              onChange={(e) => setMileage(e.target.value)}
+                              placeholder="000000"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Description Charge</label>
+                          <input
+                            required
+                            className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl outline-none focus:border-red-600 text-sm font-bold"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="ex: Loyer, Salaire, Achat Pièces..."
+                          />
+                        </div>
                       )}
                     </>
                   )}
-                </div>
-              </div>
 
-              <div className="space-y-8">
-                <div className="space-y-6">
-                  {expenseType === EntryType.EXPENSE_MAINTENANCE && (
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Kilométrage Actuel (Indispensable)</label>
-                      <input required type="number" className="w-full bg-neutral-950 border border-neutral-800 p-5 rounded-2xl outline-none focus:border-red-600 text-xl font-black text-red-500" value={mileage} onChange={(e) => setMileage(e.target.value)} placeholder="000 000" />
-                    </div>
-                  )}
-
+                  {/* Photo Upload */}
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Justificatif (Bon / Facture)</label>
-                    <div 
+                    <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Justificatif (Photo)</label>
+                    <div
                       onClick={() => fileInputRef.current?.click()}
-                      className="border-2 border-dashed border-neutral-800 rounded-3xl p-8 flex flex-col items-center justify-center text-neutral-600 hover:text-red-500 hover:border-red-500/50 cursor-pointer transition-all bg-neutral-950/30 overflow-hidden min-h-[160px]"
+                      className="border-2 border-dashed border-neutral-800 rounded-3xl p-4 flex items-center justify-center text-neutral-600 hover:text-red-500 hover:border-red-500/50 cursor-pointer transition-all bg-neutral-950/30 overflow-hidden h-24"
                     >
                       {proofPhoto ? (
-                        <div className="relative w-full h-full">
-                           <img src={proofPhoto} className="w-full h-32 object-contain rounded-lg" />
-                           <p className="text-[8px] text-center mt-2 uppercase font-black text-neutral-500">Document attaché</p>
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                          <span className="text-xs font-bold text-emerald-500">Image chargée</span>
                         </div>
                       ) : (
-                        <>
-                          <Camera className="w-8 h-8 mb-3" />
-                          <span className="text-[10px] font-black uppercase tracking-widest text-center">Capturer ou Uploader le Bon</span>
-                        </>
+                        <div className="flex flex-col items-center">
+                          <Camera className="w-5 h-5 mb-1" />
+                          <span className="text-[8px] font-black uppercase tracking-widest">Ajouter Photo</span>
+                        </div>
                       )}
                     </div>
                     <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
                   </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Informations complémentaires</label>
-                    <textarea className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl h-24 outline-none focus:border-red-600 text-sm resize-none font-medium" value={info} onChange={(e) => setInfo(e.target.value)} placeholder="Détails sur la pièce changée ou le client..."></textarea>
-                  </div>
                 </div>
               </div>
 
-              <div className="md:col-span-2 pt-8">
+              {/* Optional Description for Maintenance */}
+              {activeForm === 'EXPENSE' && expenseType === EntryType.EXPENSE_MAINTENANCE && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Détails Supplémentaires</label>
+                  <input
+                    className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl outline-none focus:border-red-600 text-sm font-bold"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Marque huile, réf pièce..."
+                  />
+                </div>
+              )}
+
+              <div className="pt-8">
                 <button type="submit" className={`w-full py-6 rounded-3xl text-xl font-black uppercase tracking-widest shadow-2xl transition-all active:scale-[0.98] ${activeForm === 'REVENUE' ? 'bg-emerald-700 hover:bg-emerald-600' : 'bg-red-700 hover:bg-red-600'}`}>
                   Valider et Envoyer
                 </button>

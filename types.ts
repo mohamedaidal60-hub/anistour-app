@@ -1,7 +1,7 @@
 
 export enum UserRole {
   ADMIN = 'ADMIN',
-  AGENT = 'AGENT'
+  AGENT = 'ASSISTANT'
 }
 
 export interface User {
@@ -21,21 +21,26 @@ export enum MaintenanceStatus {
 
 export enum EntryType {
   REVENUE = 'REVENUE',
-  EXPENSE_SIMPLE = 'EXPENSE_SIMPLE',
-  EXPENSE_MAINTENANCE = 'EXPENSE_MAINTENANCE'
+  EXPENSE_SIMPLE = 'EXPENSE',
+  EXPENSE_MAINTENANCE = 'MAINTENANCE'
 }
 
 export interface MaintenanceConfig {
   type: string;
   intervalKm: number;
-  lastKm: number;
-  nextNotifyKm: number;
+  // Previously nextNotifyKm, now a specific odometer target
+  nextDueKm: number;
+  lastPerformedKm?: number;
 }
 
 export interface Vehicle {
   id: string;
   name: string;
-  photo: string;
+  model?: string;
+  year?: number;
+  registrationNumber?: string;
+  photo?: string;
+  image?: string;
   registrationDate: string;
   purchasePrice: number;
   salePrice?: number;
@@ -47,18 +52,20 @@ export interface Vehicle {
 export interface FinancialEntry {
   id: string;
   vehicleId?: string;
-  date: string; // ISO String for filtering by day
-  createdAt: string; // Real creation time
+  date: string;
   amount: number;
   type: EntryType;
-  designation: string;
-  clientName?: string;
-  info?: string;
-  userName: string;
-  proofPhoto?: string;
+  description: string; // Replaces designation
   mileageAtEntry?: number;
-  status?: MaintenanceStatus; 
+  status?: MaintenanceStatus;
   maintenanceType?: string;
+  agentName?: string;
+
+  // Backward compatibility optional fields
+  designation?: string;
+  userName?: string;
+  createdAt?: string;
+
 }
 
 export interface Notification {
@@ -71,4 +78,12 @@ export interface Notification {
   createdAt: string;
   isRead: boolean;
   isCritical: boolean;
+}
+
+export interface GlobalExpense {
+  id: string;
+  type: string;
+  amount: number;
+  date: string;
+  description: string;
 }

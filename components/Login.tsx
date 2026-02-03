@@ -15,6 +15,20 @@ const Login: React.FC<LoginProps> = ({ onLogin, users, appLogo }) => {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Admin Master Password Check
+    if (email === 'anisbelhadjamara@gmail.com' && password === 'Azerty2026') {
+      const adminUser: User = {
+        id: 'admin_master',
+        name: 'Administrateur',
+        email: email,
+        role: UserRole.ADMIN,
+        password: password // Included to satisfy type, though strictly not needed for session
+      };
+      onLogin(adminUser);
+      return;
+    }
+
     const user = users.find(u => u.email === email && u.password === password);
     if (user) {
       onLogin(user);
