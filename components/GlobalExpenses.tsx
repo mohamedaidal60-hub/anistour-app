@@ -27,7 +27,7 @@ const GlobalExpenses: React.FC<{ store: any }> = ({ store }) => {
     };
 
     const stats = store.getFinancialStats();
-    const formatMoney = (amount: number) => amount.toLocaleString('fr-DZ', { style: 'currency', currency: 'DZD' });
+    const formatMoney = (amount: number) => (amount ?? 0).toLocaleString('fr-DZ', { style: 'currency', currency: 'DZD' });
 
     return (
         <div className="space-y-6">

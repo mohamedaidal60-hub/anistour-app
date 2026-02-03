@@ -56,7 +56,9 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
       mileageAtEntry: mileage ? Number(mileage) : undefined,
       status: activeForm === 'EXPENSE' && expenseType === EntryType.EXPENSE_MAINTENANCE ? MaintenanceStatus.PENDING : MaintenanceStatus.APPROVED,
       maintenanceType: expenseType === EntryType.EXPENSE_MAINTENANCE ? maintenanceType : undefined,
-      // Optional/Legacy fields if needed by backend or types
+      proofPhoto: proofPhoto || undefined,
+      // Optional/Legacy fields for maximum compatibility across components
+      info: description,
       designation: finalDescription,
       userName: store.currentUser?.name || 'Agent',
       createdAt: new Date().toISOString()
@@ -129,7 +131,7 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
                     >
                       <option value="">Sélectionner un véhicule...</option>
                       {store.vehicles.filter(v => !v.isArchived).map(v => (
-                        <option key={v.id} value={v.id}>{v.name} (Actuel: {v.lastMileage.toLocaleString()} KM)</option>
+                        <option key={v.id} value={v.id}>{v.name} (Actuel: {(v.lastMileage ?? 0).toLocaleString()} KM)</option>
                       ))}
                     </select>
                   </div>

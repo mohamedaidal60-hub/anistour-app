@@ -23,9 +23,10 @@ interface SidebarProps {
   appLogo?: string;
   onLogout: () => void;
   onClose?: () => void;
+  store: any;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, role, userName, appLogo, onLogout, onClose }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, role, userName, appLogo, onLogout, onClose, store }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Tableau de Bord', icon: LayoutDashboard, roles: [UserRole.ADMIN, UserRole.AGENT] },
     { id: 'vehicles', label: 'Gestion Véhicules', icon: Car, roles: [UserRole.ADMIN, UserRole.AGENT] },
@@ -66,19 +67,34 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, role, userNa
       </div>
 
       <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto custom-scrollbar">
-        {menuItems.filter(item => item.roles.includes(role)).map(item => (
-          <button
-            key={item.id}
-            onClick={() => setActiveTab(item.id)}
-            className={`w-full flex items-center px-4 py-3 rounded-xl text-sm font-semibold transition-all group ${activeTab === item.id
-              ? 'bg-red-700 text-white shadow-lg'
-              : 'text-neutral-500 hover:bg-neutral-900 hover:text-neutral-200'
-              }`}
-          >
-            <item.icon className="w-5 h-5 mr-3 shrink-0" />
-            {item.label}
-          </button>
-        ))}
+        {menuItems.filter(item => item.roles.includes(role)).map(item => {
+          const isValidation = item.id === 'validation';
+          const isNotif = item.id === 'notifications';
+          const pendingCount = store.entries.filter(e => e.status === 'PENDING').length;
+          const notifCount = store.notifications.length;
+
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all group ${activeTab === item.id
+                ? 'bg-red-700 text-white shadow-lg'
+                : 'text-neutral-500 hover:bg-neutral-900 hover:text-neutral-200'
+                }`}
+            >
+              <div className="flex items-center">
+                <item.icon className="w-5 h-5 mr-3 shrink-0" />
+                {item.label}
+              </div>
+              {isValidation && pendingCount > 0 && (
+                <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-black animate-pulse">{pendingCount}</span>
+              )}
+              {isNotif && notifCount > 0 && (
+                <span className="bg-neutral-800 text-neutral-300 text-[10px] px-2 py-0.5 rounded-full font-black border border-neutral-700">{notifCount}</span>
+              )}
+            </button>
+          );
+        })}
       </nav>
 
       <div className="p-4 border-t border-neutral-800 bg-neutral-950">

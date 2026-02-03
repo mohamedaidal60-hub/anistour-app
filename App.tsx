@@ -69,6 +69,7 @@ const App: React.FC = () => {
           appLogo="/logo.png"
           onLogout={() => store.setCurrentUser(null)}
           onClose={() => setIsSidebarOpen(false)}
+          store={store}
         />
       </div>
 

@@ -60,6 +60,8 @@ export interface FinancialEntry {
   status?: MaintenanceStatus;
   maintenanceType?: string;
   agentName?: string;
+  proofPhoto?: string;
+  info?: string; // For backward compatibility with some components
 
   // Backward compatibility optional fields
   designation?: string;
