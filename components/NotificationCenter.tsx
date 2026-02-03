@@ -1,26 +1,35 @@
 import React from 'react';
 import { useFleetStore } from '../store.ts';
-import { Bell, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { Bell, AlertTriangle, ShieldAlert, X } from 'lucide-react';
 
 interface NotificationCenterProps {
   store: ReturnType<typeof useFleetStore>;
+  onClose?: () => void;
 }
 
-const NotificationCenter: React.FC<NotificationCenterProps> = ({ store }) => {
+const NotificationCenter: React.FC<NotificationCenterProps> = ({ store, onClose }) => {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex justify-between items-center bg-neutral-900 border border-neutral-800 p-6 rounded-2xl">
+      <div className="flex justify-between items-center bg-neutral-900 border border-neutral-800 p-6 rounded-2xl relative overflow-hidden">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-red-900/30 rounded-xl">
             <Bell className="w-6 h-6 text-red-500" />
           </div>
           <div>
-            <h2 className="text-xl font-bold">Notifications</h2>
-            <p className="text-sm text-neutral-500">Suivi des alertes kilométriques et maintenances</p>
+            <h2 className="text-xl font-bold">Alertes & Notifications</h2>
+            <p className="text-sm text-neutral-500">Suivi des échéances et maintenances</p>
           </div>
         </div>
-        <div className="text-right">
+        <div className="flex items-center gap-4">
           <span className="text-xs bg-red-600 px-2 py-1 rounded-full font-bold uppercase">{store.notifications.length} Actives</span>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-neutral-800 rounded-full transition-colors text-neutral-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
       </div>
 

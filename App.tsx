@@ -61,7 +61,7 @@ const App: React.FC = () => {
       )}
 
       {/* Sidebar - Responsive */}
-      <aside className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 lg:static lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} shrink-0`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} bg-neutral-950 border-r border-neutral-800 shrink-0`}>
         <Sidebar
           activeTab={activeTab}
           setActiveTab={(tab) => { setActiveTab(tab); setIsSidebarOpen(false); }}
@@ -74,10 +74,11 @@ const App: React.FC = () => {
         />
       </aside>
 
-      <main className="flex-1 min-w-0 flex flex-col overflow-x-hidden overflow-y-auto relative custom-scrollbar bg-neutral-950">
+      {/* Content Area */}
+      <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden relative">
         <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
 
-        <header className="p-4 border-b border-neutral-800 flex justify-between items-center sticky top-0 bg-neutral-950/80 backdrop-blur-xl z-30">
+        <header className="p-4 border-b border-neutral-800 flex justify-between items-center bg-neutral-950/80 backdrop-blur-xl z-30 shrink-0">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsSidebarOpen(true)}
@@ -92,7 +93,7 @@ const App: React.FC = () => {
                     activeTab === 'journal' ? 'Journal' :
                       activeTab === 'maintenance' ? 'Entretiens' :
                         activeTab === 'validation' ? 'Validation' :
-                          activeTab === 'notifications' ? 'Alertes' :
+                          activeTab === 'notifications' ? 'Alertes & Notifications' :
                             activeTab === 'users' ? 'Paramètres' : 'Archives'}
             </h1>
           </div>
@@ -100,7 +101,7 @@ const App: React.FC = () => {
           <div className="flex items-center space-x-2 sm:space-x-4">
             <button
               onClick={() => setActiveTab('notifications')}
-              className="relative p-2 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-xl transition-all"
+              className={`relative p-2 rounded-xl transition-all ${activeTab === 'notifications' ? 'bg-red-700 text-white' : 'text-neutral-400 hover:text-white hover:bg-neutral-800'}`}
             >
               <Bell className="w-5 h-5" />
               {store.notifications.length > 0 && (
@@ -117,19 +118,30 @@ const App: React.FC = () => {
                 {store.isCloudSyncing ? 'Sync...' : 'Online'}
               </span>
             </div>
-            <span className="px-3 py-1 bg-neutral-800 text-neutral-400 border border-neutral-700 rounded-lg text-xs font-bold uppercase tracking-widest">{store.currentUser.role}</span>
+            <span className="px-3 py-1 bg-neutral-800 text-neutral-400 border border-neutral-700 rounded-lg text-[10px] font-black uppercase tracking-widest truncate max-w-[100px]">{store.currentUser.role}</span>
           </div>
         </header>
 
-        <div className="p-4 sm:p-6 relative z-10 w-full mx-auto max-w-[1600px]">
-          {renderContent()}
-        </div>
+        <main className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar relative z-10">
+          <div className="p-4 sm:p-6 w-full mx-auto max-w-[1600px]">
+            {activeTab === 'dashboard' && <Dashboard store={store} />}
+            {activeTab === 'vehicles' && <VehicleList store={store} />}
+            {activeTab === 'entry' && <DailyEntry store={store} />}
+            {activeTab === 'journal' && <Journal store={store} />}
+            {activeTab === 'maintenance' && <MaintenanceManager store={store} />}
+            {activeTab === 'validation' && (store.currentUser?.role === UserRole.ADMIN ? <AdminValidation store={store} /> : <div className="p-20 text-center text-red-500 font-black">ACCÈS REFUSÉ</div>)}
+            {activeTab === 'notifications' && <NotificationCenter store={store} onClose={() => setActiveTab('dashboard')} />}
+            {activeTab === 'archives' && <Archives store={store} />}
+            {activeTab === 'charges' && (store.currentUser?.role === UserRole.ADMIN ? <GlobalExpenses store={store} /> : <div className="p-20 text-center text-red-500 font-black">ACCÈS REFUSÉ</div>)}
+            {activeTab === 'users' && (store.currentUser?.role === UserRole.ADMIN ? <UserManagement store={store} /> : <div className="p-20 text-center text-red-500 font-black">ACCÈS REFUSÉ</div>)}
+          </div>
+        </main>
 
         <Chat store={store} />
-      </main>
+      </div>
 
       <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #0a0a0a; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #262626; border-radius: 10px; }
       `}</style>

@@ -263,46 +263,128 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
               {/* Maintenance Configs (Always visible) */}
               <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6">
                 <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-lg font-bold flex items-center gap-2"><Ruler className="w-5 h-5 text-red-600" /> Maintenance Cible</h3>
+                  <h3 className="text-sm font-black text-neutral-500 uppercase tracking-widest">Plan d'Entretien</h3>
                   {isAdmin && (
-                    editingConfig ? (
-                      <button onClick={saveConfigs} className="flex items-center gap-2 px-4 py-2 bg-emerald-900/30 text-emerald-500 rounded-lg text-xs font-bold border border-emerald-900 hover:bg-emerald-900/50">
-                        <Save className="w-4 h-4" /> Sauvegarder
-                      </button>
-                    ) : (
-                      <button onClick={() => setEditingConfig(true)} className="flex items-center gap-2 px-4 py-2 bg-neutral-800 text-neutral-400 rounded-lg text-xs font-bold border border-neutral-700 hover:text-white">
-                        Modifier
-                      </button>
-                    )
+                    <div className="flex gap-2">
+                      {editingConfig ? (
+                        <>
+                          <button
+                            onClick={() => {
+                              const type = prompt('Nom de l\'entretien (ex: Vidange, Courroie...) :');
+                              if (type) {
+                                setTempConfigs([...tempConfigs, {
+                                  type,
+                                  intervalKm: 10000,
+                                  lastPerformedKm: vehicle.lastMileage,
+                                  nextDueKm: vehicle.lastMileage + 10000
+                                }]);
+                              }
+                            }}
+                            className="px-3 py-1.5 bg-neutral-800 text-neutral-300 rounded-lg text-[10px] font-black uppercase hover:text-white"
+                          >
+                            + Ajouter
+                          </button>
+                          <button onClick={saveConfigs} className="px-3 py-1.5 bg-emerald-700 text-white rounded-lg text-[10px] font-black uppercase shadow-lg shadow-emerald-900/20">Enregistrer</button>
+                          <button onClick={() => { setEditingConfig(false); setTempConfigs(vehicle.maintenanceConfigs); }} className="px-3 py-1.5 bg-neutral-800 text-neutral-500 rounded-lg text-[10px] font-black uppercase">Annuler</button>
+                        </>
+                      ) : (
+                        <button onClick={() => setEditingConfig(true)} className="px-3 py-1.5 bg-red-900/20 text-red-500 border border-red-900/30 rounded-lg text-[10px] font-black uppercase">Gérer les Entretiens</button>
+                      )}
+                    </div>
                   )}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {(editingConfig ? tempConfigs : (vehicle.maintenanceConfigs || [])).map((cfg, idx) => (
-                    <div key={cfg.type} className="bg-neutral-900 p-4 rounded-xl border border-neutral-800 flex flex-col gap-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-black uppercase text-neutral-500">{cfg.type}</span>
-                        <span className="text-[10px] bg-neutral-800 px-2 py-1 rounded text-neutral-400">Int: {cfg.intervalKm} km</span>
-                      </div>
 
-                      <div className="space-y-1">
-                        <label className="text-[9px] uppercase font-bold text-neutral-600">Prochain (Compteur)</label>
-                        {editingConfig ? (
-                          <input
-                            type="number"
-                            className="w-full bg-neutral-950 border border-neutral-700 rounded p-2 text-sm font-bold text-white focus:border-red-600 outline-none"
-                            value={cfg.nextDueKm}
-                            onChange={(e) => {
-                              const newC = [...tempConfigs];
-                              newC[idx].nextDueKm = Number(e.target.value);
-                              setTempConfigs(newC);
-                            }}
-                          />
-                        ) : (
-                          <div className="text-xl font-black text-white">{(cfg.nextDueKm ?? 0).toLocaleString()} <span className="text-xs text-neutral-600">KM</span></div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {(editingConfig ? tempConfigs : (vehicle.maintenanceConfigs || [])).map((cfg, idx) => {
+                    const remainingKm = cfg.nextDueKm - vehicle.lastMileage;
+                    const isUrgent = remainingKm < 500;
+                    const progress = Math.max(0, Math.min(100, (1 - (remainingKm / cfg.intervalKm)) * 100));
+
+                    return (
+                      <div key={idx} className="bg-neutral-900/50 p-4 rounded-xl border border-neutral-800 flex flex-col gap-3 relative group transition-all hover:border-neutral-700">
+                        {editingConfig && (
+                          <button
+                            onClick={() => setTempConfigs(tempConfigs.filter((_, i) => i !== idx))}
+                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-700 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 transition-all border border-red-800 z-10"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
+
+                        <div className="space-y-3">
+                          <div className="space-y-1">
+                            <label className="text-[9px] uppercase font-bold text-neutral-600">Désignation</label>
+                            {editingConfig ? (
+                              <input
+                                type="text"
+                                className="w-full bg-neutral-950 border border-neutral-700 rounded p-2 text-xs font-bold text-white focus:border-red-600 outline-none"
+                                value={cfg.type}
+                                onChange={(e) => {
+                                  const newC = [...tempConfigs];
+                                  newC[idx].type = e.target.value;
+                                  setTempConfigs(newC);
+                                }}
+                              />
+                            ) : (
+                              <div className="text-xs font-black uppercase text-neutral-400 truncate tracking-wider">{cfg.type}</div>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <label className="text-[9px] uppercase font-bold text-neutral-600">Intervalle</label>
+                              {editingConfig ? (
+                                <input
+                                  type="number"
+                                  className="w-full bg-neutral-950 border border-neutral-700 rounded p-2 text-xs font-bold text-white focus:border-red-600 outline-none"
+                                  value={cfg.intervalKm}
+                                  onChange={(e) => {
+                                    const newC = [...tempConfigs];
+                                    newC[idx].intervalKm = Number(e.target.value);
+                                    setTempConfigs(newC);
+                                  }}
+                                />
+                              ) : (
+                                <div className="text-sm font-black text-neutral-200">{cfg.intervalKm.toLocaleString()} KM</div>
+                              )}
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[9px] uppercase font-bold text-neutral-600">Echéance</label>
+                              {editingConfig ? (
+                                <input
+                                  type="number"
+                                  className="w-full bg-neutral-950 border border-neutral-700 rounded p-2 text-xs font-bold text-white focus:border-red-600 outline-none"
+                                  value={cfg.nextDueKm}
+                                  onChange={(e) => {
+                                    const newC = [...tempConfigs];
+                                    newC[idx].nextDueKm = Number(e.target.value);
+                                    setTempConfigs(newC);
+                                  }}
+                                />
+                              ) : (
+                                <div className={`text-sm font-black ${isUrgent ? 'text-red-500 animate-pulse' : 'text-neutral-200'}`}>{cfg.nextDueKm.toLocaleString()} KM</div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {!editingConfig && (
+                          <div className="mt-2 space-y-1">
+                            <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-neutral-500">
+                              <span>{remainingKm < 0 ? 'DÉPASSÉ' : 'RESTE'}</span>
+                              <span>{Math.abs(remainingKm).toLocaleString()} KM</span>
+                            </div>
+                            <div className="h-1.5 bg-neutral-950 rounded-full overflow-hidden border border-neutral-800">
+                              <div
+                                className={`h-full transition-all duration-700 ${isUrgent ? 'bg-red-600 animate-pulse' : 'bg-red-900 border-r border-red-500'}`}
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                          </div>
                         )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
