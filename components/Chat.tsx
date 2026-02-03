@@ -19,32 +19,27 @@ const Chat: React.FC<ChatProps> = ({ store }) => {
 
     const isAdmin = currentUser.role === UserRole.ADMIN || (currentUser.role as string).toUpperCase() === 'ADMIN';
 
-    // List of users the current person can talk to
+    // List of users the admin can talk to (Agents)
     const availableRecipients = store.users.filter(u => {
         if (u.id === currentUser.id) return false;
-
-        if (isAdmin) {
-            // Admin can talk to EVERYONE
-            return true;
-        } else {
-            // Agent can talk to ALL Admins
-            return (u.role === UserRole.ADMIN || (u.role as string).toUpperCase() === 'ADMIN' || (u.role as string).toUpperCase() === 'ADMINISTRATEUR');
-        }
+        const role = (u.role as string).toUpperCase();
+        return role === 'AGENT' || role === 'ASSISTANT' || role === UserRole.AGENT;
     });
 
-    // Default recipient for agent: First Admin
+    // Default selection
     useEffect(() => {
-        const admins = store.users.filter(u => (u.role === UserRole.ADMIN || (u.role as string).toUpperCase() === 'ADMIN') && u.id !== currentUser.id);
-        if (!isAdmin && admins.length > 0 && !selectedRecipientId) {
-            setSelectedRecipientId(admins[0].id);
+        if (isAdmin) {
+            if (!selectedRecipientId) setSelectedRecipientId('broadcast_agents');
+        } else {
+            setSelectedRecipientId('broadcast_admins');
         }
-    }, [isAdmin, store.users, selectedRecipientId, currentUser.id]);
+    }, [isAdmin, selectedRecipientId]);
 
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
-    }, [store.messages, isOpen]);
+    }, [store.messages, isOpen, selectedRecipientId]);
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -66,15 +61,21 @@ const Chat: React.FC<ChatProps> = ({ store }) => {
 
     const filteredMessages = store.messages.filter(m => {
         if (isAdmin) {
-            // Admin sees messages they sent OR messages sent to them
-            // OR if talking to a specific agent, show that thread
-            if (!selectedRecipientId) return false;
+            if (selectedRecipientId === 'broadcast_agents') {
+                // Global thread: Admin to all agents OR Agents to all admins
+                return m.receiverId === 'broadcast_agents' || m.receiverId === 'broadcast_admins';
+            }
+            // Private thread between this Admin and specific Agent
             return (m.senderId === currentUser.id && m.receiverId === selectedRecipientId) ||
                 (m.senderId === selectedRecipientId && m.receiverId === currentUser.id);
         } else {
-            // Agent sees messages between them and the selected admin
-            return (m.senderId === currentUser.id && m.receiverId === selectedRecipientId) ||
-                (m.senderId === selectedRecipientId && m.receiverId === currentUser.id);
+            // Agent view:
+            // 1. Broadcasts from Admins (receiverId === 'broadcast_agents')
+            // 2. My messages to Admins (senderId === me && receiverId === 'broadcast_admins')
+            // 3. Private messages from Admins specifically to ME (receiverId === me)
+            return m.receiverId === 'broadcast_agents' ||
+                (m.senderId === currentUser.id && m.receiverId === 'broadcast_admins') ||
+                (m.receiverId === currentUser.id);
         }
     });
 
@@ -109,18 +110,30 @@ const Chat: React.FC<ChatProps> = ({ store }) => {
                         </button>
                     </div>
 
-                    {/* Recipient Selector (visible for Admin to pick any user, or for Agent to switch between admins if multiple) */}
-                    {availableRecipients.length > 0 && (
+                    {/* Recipient Selector (Admin only) */}
+                    {isAdmin && (
                         <div className="p-2 bg-neutral-950/50 border-b border-neutral-800 flex gap-2 overflow-x-auto custom-scrollbar">
+                            <button
+                                onClick={() => setSelectedRecipientId('broadcast_agents')}
+                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all whitespace-nowrap border ${selectedRecipientId === 'broadcast_agents' ? 'bg-red-700 border-red-600 text-white' : 'bg-neutral-900 border-neutral-800 text-neutral-500 hover:text-neutral-300'}`}
+                            >
+                                Tous les Agents
+                            </button>
                             {availableRecipients.map(a => (
                                 <button
                                     key={a.id}
                                     onClick={() => setSelectedRecipientId(a.id)}
                                     className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all whitespace-nowrap border ${selectedRecipientId === a.id ? 'bg-red-700 border-red-600 text-white' : 'bg-neutral-900 border-neutral-800 text-neutral-500 hover:text-neutral-300'}`}
                                 >
-                                    {a.name || 'Utilisateur'}
+                                    {a.name || 'Agent'}
                                 </button>
                             ))}
+                        </div>
+                    )}
+
+                    {!isAdmin && (
+                        <div className="p-3 bg-neutral-950/50 border-b border-neutral-800 text-center">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500">Ligne Directe vers l'Administration</p>
                         </div>
                     )}
 
@@ -133,7 +146,11 @@ const Chat: React.FC<ChatProps> = ({ store }) => {
                                         <div className="w-12 h-12 bg-neutral-800 rounded-full flex items-center justify-center mb-4 border border-neutral-700">
                                             <MessageSquare className="w-6 h-6 text-neutral-600" />
                                         </div>
-                                        <p className="text-xs text-neutral-500 font-medium italic">Commencez la discussion avec {store.users.find(u => u.id === selectedRecipientId)?.name}</p>
+                                        <p className="text-xs text-neutral-500 font-medium italic">
+                                            {selectedRecipientId === 'broadcast_agents' ? "Aucun message collectif pour l'instant" :
+                                                selectedRecipientId === 'broadcast_admins' ? "Posez votre question aux administrateurs" :
+                                                    `Commencez la discussion privée avec ${store.users.find(u => u.id === selectedRecipientId)?.name}`}
+                                        </p>
                                     </div>
                                 )}
                                 {filteredMessages.map(m => {

@@ -187,8 +187,8 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md overflow-hidden">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl w-full max-w-5xl h-[90vh] flex flex-col relative overflow-hidden shadow-2xl">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 bg-black/90 backdrop-blur-md overflow-hidden">
+      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl sm:rounded-3xl w-full max-w-4xl h-[95vh] sm:h-[90vh] flex flex-col relative overflow-hidden shadow-2xl">
         {/* Header */}
         <div className="p-6 border-b border-neutral-800 bg-neutral-950 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-4">

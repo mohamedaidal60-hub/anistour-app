@@ -61,7 +61,7 @@ const App: React.FC = () => {
       )}
 
       {/* Sidebar - Responsive */}
-      <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 lg:static lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} shrink-0`}>
         <Sidebar
           activeTab={activeTab}
           setActiveTab={(tab) => { setActiveTab(tab); setIsSidebarOpen(false); }}
@@ -72,9 +72,9 @@ const App: React.FC = () => {
           onClose={() => setIsSidebarOpen(false)}
           store={store}
         />
-      </div>
+      </aside>
 
-      <main className="flex-1 flex flex-col overflow-auto relative custom-scrollbar bg-neutral-950 w-full">
+      <main className="flex-1 min-w-0 flex flex-col overflow-x-hidden overflow-y-auto relative custom-scrollbar bg-neutral-950">
         <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
 
         <header className="p-4 border-b border-neutral-800 flex justify-between items-center sticky top-0 bg-neutral-950/80 backdrop-blur-xl z-30">
