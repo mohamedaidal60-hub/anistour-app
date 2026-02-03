@@ -70,6 +70,16 @@ export interface FinancialEntry {
 
 }
 
+export interface Message {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderRole: UserRole;
+  receiverId: string; // Admin ID or Agent ID
+  text: string;
+  timestamp: string;
+}
+
 export interface Notification {
   id: string;
   vehicleId: string;

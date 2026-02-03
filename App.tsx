@@ -13,7 +13,8 @@ import Archives from './components/Archives.tsx';
 import UserManagement from './components/UserManagement.tsx';
 import Journal from './components/Journal.tsx';
 import GlobalExpenses from './components/GlobalExpenses.tsx';
-import { Cloud, RefreshCw, Loader2, Menu } from 'lucide-react';
+import Chat from './components/Chat.tsx';
+import { Cloud, RefreshCw, Loader2, Menu, Bell } from 'lucide-react';
 
 const App: React.FC = () => {
   const store = useFleetStore();
@@ -97,6 +98,15 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-2 sm:space-x-4">
+            <button
+              onClick={() => setActiveTab('notifications')}
+              className="relative p-2 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-xl transition-all"
+            >
+              <Bell className="w-5 h-5" />
+              {store.notifications.length > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-600 rounded-full border-2 border-neutral-950 animate-pulse"></span>
+              )}
+            </button>
             <div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 border rounded-xl transition-all ${store.isCloudSyncing ? 'bg-amber-950/20 border-amber-900/50 text-amber-500' : 'bg-emerald-950/20 border-emerald-900/50 text-emerald-500'}`}>
               {store.isCloudSyncing ? (
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -114,6 +124,8 @@ const App: React.FC = () => {
         <div className="p-4 sm:p-6 relative z-10 w-full mx-auto max-w-[1600px]">
           {renderContent()}
         </div>
+
+        <Chat store={store} />
       </main>
 
       <style>{`

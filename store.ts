@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { Vehicle, FinancialEntry, Notification, User, UserRole, MaintenanceStatus, EntryType, GlobalExpense } from './types.ts';
+import { Vehicle, FinancialEntry, Notification, User, UserRole, MaintenanceStatus, EntryType, GlobalExpense, Message } from './types.ts';
 
 const SUPABASE_URL = 'https://zxxrazexrwokihbzhina.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Nr7EYzoE9HkOyncjhPTLSw_R6Dm0-1W';
@@ -26,6 +26,7 @@ export function useFleetStore() {
   const [vehicles, setVehicles] = useState<Vehicle[]>(() => getLocal('vehicles', []));
   const [entries, setEntries] = useState<FinancialEntry[]>(() => getLocal('entries', []));
   const [globalExpenses, setGlobalExpenses] = useState<GlobalExpense[]>(() => getLocal('global_expenses', []));
+  const [messages, setMessages] = useState<Message[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [users, setUsers] = useState<User[]>(() => getLocal('users', []));
   const [appLogo, setAppLogoState] = useState<string>(() => getLocal('logo', ''));
@@ -58,6 +59,11 @@ export function useFleetStore() {
       if (gData) {
         setGlobalExpenses(gData);
         setLocal('global_expenses', gData);
+      }
+
+      const { data: mData } = await supabase.from('messages').select('*').order('timestamp', { ascending: true });
+      if (mData) {
+        setMessages(mData);
       }
 
       const { data: uData } = await supabase.from('users').select('*');
@@ -106,6 +112,14 @@ export function useFleetStore() {
       })
       .subscribe();
 
+    const messagesChannel = supabase
+      .channel('messages_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload) => {
+        console.log('Message detected:', payload);
+        fetchData();
+      })
+      .subscribe();
+
     const usersChannel = supabase
       .channel('users_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
@@ -119,6 +133,7 @@ export function useFleetStore() {
       supabase.removeChannel(vehiclesChannel);
       supabase.removeChannel(entriesChannel);
       supabase.removeChannel(expensesChannel);
+      supabase.removeChannel(messagesChannel);
       supabase.removeChannel(usersChannel);
     };
   }, [fetchData]);
@@ -277,6 +292,11 @@ export function useFleetStore() {
     getFinancialStats, resetPassword: async (uid: string, pass: string) => {
       setUsers(prev => prev.map(u => u.id === uid ? { ...u, password: pass } : u));
       await supabase.from('users').update({ password: pass }).eq('id', uid);
+    },
+    messages,
+    sendMessage: async (m: Message) => {
+      setMessages(prev => [...prev, m]);
+      await supabase.from('messages').insert([m]);
     }
   };
 }
