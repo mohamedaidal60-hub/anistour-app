@@ -296,9 +296,11 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {(editingConfig ? tempConfigs : (vehicle.maintenanceConfigs || [])).map((cfg, idx) => {
-                    const remainingKm = cfg.nextDueKm - vehicle.lastMileage;
+                    const nextDue = cfg.nextDueKm ?? 0;
+                    const interval = cfg.intervalKm || 1; // Prevent division by zero
+                    const remainingKm = nextDue - (vehicle.lastMileage ?? 0);
                     const isUrgent = remainingKm < 500;
-                    const progress = Math.max(0, Math.min(100, (1 - (remainingKm / cfg.intervalKm)) * 100));
+                    const progress = Math.max(0, Math.min(100, (1 - (remainingKm / interval)) * 100));
 
                     return (
                       <div key={idx} className="bg-neutral-900/50 p-4 rounded-xl border border-neutral-800 flex flex-col gap-3 relative group transition-all hover:border-neutral-700">

@@ -89,39 +89,36 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
     <div className="max-w-5xl mx-auto">
       <div className="bg-neutral-900 border border-neutral-800 rounded-[2.5rem] shadow-2xl overflow-hidden backdrop-blur-sm relative">
 
-        {/* Unified Mobile-Ready Header with Centered Badge */}
-        <div className="flex flex-col border-b border-neutral-800 bg-neutral-950/50">
-          <div className="flex items-center justify-between p-3 gap-2 flex-wrap sm:flex-nowrap">
+        {/* Refactored 3-Tab Header Row */}
+        <div className="flex flex-col border-b border-neutral-800 bg-neutral-950/50 p-4 sm:p-6 space-y-4">
+          <div className="flex items-center justify-center">
+            <div className="px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-full flex items-center gap-2 shrink-0">
+              <ShieldAlert className="w-3 h-3 text-red-600 animate-pulse" />
+              <span className="text-[9px] font-black uppercase tracking-widest text-neutral-400">Canal de Saisie Sécurisé</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
             <button
               onClick={() => { setActiveForm('REVENUE'); setExpenseType(EntryType.REVENUE); resetForm(); }}
               type="button"
-              className={`flex-1 py-3 px-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeForm === 'REVENUE' ? 'bg-emerald-700 text-white shadow-lg' : 'text-neutral-500 hover:text-neutral-300'}`}
+              className={`py-4 px-1 rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all border ${activeForm === 'REVENUE' ? 'bg-emerald-700 border-emerald-600 text-white shadow-xl shadow-emerald-900/40 translate-y-[-2px]' : 'bg-neutral-950 border-neutral-800 text-neutral-500 hover:border-neutral-700 hover:text-neutral-300'}`}
             >
               Revenu
             </button>
-
-            {/* Centered Secure Indicator */}
-            <div className="order-first sm:order-none w-full sm:w-auto px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-full flex items-center justify-center gap-2 shrink-0 mb-2 sm:mb-0">
-              <ShieldAlert className="w-3 h-3 text-red-600 animate-pulse" />
-              <span className="text-[9px] font-black uppercase tracking-widest text-neutral-400">Saisie Sécurisée</span>
-            </div>
-
             <button
               onClick={() => { setActiveForm('EXPENSE_VEHICLE'); setExpenseType(EntryType.EXPENSE_SIMPLE); resetForm(); }}
               type="button"
-              className={`flex-1 py-3 px-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeForm === 'EXPENSE_VEHICLE' ? 'bg-red-700 text-white shadow-lg' : 'text-neutral-500 hover:text-neutral-300'}`}
+              className={`py-4 px-1 rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all border ${activeForm === 'EXPENSE_VEHICLE' ? 'bg-red-700 border-red-600 text-white shadow-xl shadow-red-900/40 translate-y-[-2px]' : 'bg-neutral-950 border-neutral-800 text-neutral-500 hover:border-neutral-700 hover:text-neutral-300'}`}
             >
-              Charge Véhicule
+              Véhicule
             </button>
-          </div>
-
-          <div className="px-3 pb-3">
             <button
               onClick={() => { setActiveForm('EXPENSE_GLOBAL'); resetForm(); }}
               type="button"
-              className={`w-full py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all border ${activeForm === 'EXPENSE_GLOBAL' ? 'bg-amber-700 text-white border-amber-600 shadow-lg' : 'text-neutral-500 border-neutral-800 hover:border-neutral-700'}`}
+              className={`py-4 px-1 rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all border ${activeForm === 'EXPENSE_GLOBAL' ? 'bg-amber-700 border-amber-600 text-white shadow-xl shadow-amber-900/40 translate-y-[-2px]' : 'bg-neutral-950 border-neutral-800 text-neutral-500 hover:border-neutral-700 hover:text-neutral-300'}`}
             >
-              Charge Globale (Loyer, Salaire, etc.)
+              Globale
             </button>
           </div>
         </div>
@@ -286,19 +283,6 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
                   </div>
                 </div>
               </div>
-
-              {/* Extra Details for Maintenance */}
-              {activeForm === 'EXPENSE_VEHICLE' && expenseType === EntryType.EXPENSE_MAINTENANCE && (
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Détails Supplémentaires (Optionnel)</label>
-                  <input
-                    className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl outline-none focus:border-red-600 text-sm font-bold"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="ex: Marque de l'huile, Référence pièce..."
-                  />
-                </div>
-              )}
 
               <div className="pt-8">
                 <button

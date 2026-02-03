@@ -19,37 +19,39 @@ const Chat: React.FC<ChatProps> = ({ store }) => {
     const currentUser = store.currentUser;
     if (!currentUser) return null;
 
-    const isAdmin = currentUser.role === UserRole.ADMIN || (currentUser.role as string).toUpperCase() === 'ADMIN';
+    const isAdmin = currentUser.role === UserRole.ADMIN || (currentUser.role as string).toUpperCase() === 'ADMIN' || (currentUser.role as string).toUpperCase() === 'ADMINISTRATEUR';
 
     // List of users to talk to
     const agents = store.users.filter(u => {
         if (u.id === currentUser.id) return false;
-        const role = (u.role as string).toUpperCase();
-        return role === 'AGENT' || role === 'ASSISTANT' || role === 'ASSISTANTE' || role === UserRole.AGENT;
+        const r = (u.role as string).toUpperCase();
+        return r === 'AGENT' || r === 'ASSISTANT' || r === 'ASSISTANTE' || r === 'SERVICE' || r === UserRole.AGENT;
     });
 
     const administrators = store.users.filter(u => {
         if (u.id === currentUser.id) return false;
-        const role = (u.role as string).toUpperCase();
-        return role === 'ADMIN' || role === 'ADMINISTRATEUR' || role === UserRole.ADMIN;
+        const r = (u.role as string).toUpperCase();
+        return r === 'ADMIN' || r === 'ADMINISTRATEUR' || r === UserRole.ADMIN;
     });
 
-    const allRecipients = [...agents, ...administrators];
+    const allRecipients = isAdmin ? agents : administrators;
     const filteredRecipients = allRecipients.filter(u =>
-        u.name.toLowerCase().includes(searchQuery.toLowerCase())
+        (u.name || 'Agent').toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    // Auto-select broadcast for agents on first open
+    // Initial view logic
     useEffect(() => {
-        if (!isAdmin && !selectedRecipientId) {
-            setSelectedRecipientId('broadcast_admins');
-            setShowList(false);
+        if (isOpen) {
+            if (isAdmin) {
+                // Admins see the user list by default
+                setShowList(true);
+            } else {
+                // Agents talk to Admins by default
+                setSelectedRecipientId('broadcast_admins');
+                setShowList(false);
+            }
         }
-        if (isAdmin && !selectedRecipientId) {
-            setSelectedRecipientId('broadcast_agents');
-            setShowList(false);
-        }
-    }, [isAdmin, selectedRecipientId]);
+    }, [isOpen, isAdmin]);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -62,7 +64,7 @@ const Chat: React.FC<ChatProps> = ({ store }) => {
         if (!text.trim() || !selectedRecipientId) return;
 
         const msg: Message = {
-            id: crypto.randomUUID(),
+            id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
             senderId: currentUser.id,
             senderName: currentUser.name,
             senderRole: currentUser.role,
@@ -76,10 +78,8 @@ const Chat: React.FC<ChatProps> = ({ store }) => {
     };
 
     const filteredMessages = store.messages.filter(m => {
-        if (selectedRecipientId === 'broadcast_agents') {
-            return m.receiverId === 'broadcast_agents' || m.receiverId === 'broadcast_admins';
-        }
-        if (selectedRecipientId === 'broadcast_admins') {
+        if (selectedRecipientId === 'broadcast_agents' || selectedRecipientId === 'broadcast_admins') {
+            // Global thread
             return m.receiverId === 'broadcast_agents' || m.receiverId === 'broadcast_admins';
         }
         // Private conversation
@@ -88,8 +88,8 @@ const Chat: React.FC<ChatProps> = ({ store }) => {
         return isMeSender || isMeReceiver;
     });
 
-    const currentRecipientName = selectedRecipientId === 'broadcast_agents' ? 'Diffusion Agents' :
-        selectedRecipientId === 'broadcast_admins' ? 'Support / Admin' :
+    const currentRecipientName = selectedRecipientId === 'broadcast_agents' ? 'Diffusion Globale' :
+        selectedRecipientId === 'broadcast_admins' ? 'Support Administration' :
             store.users.find(u => u.id === selectedRecipientId)?.name || 'Discussion';
 
     return (
@@ -97,111 +97,114 @@ const Chat: React.FC<ChatProps> = ({ store }) => {
             {!isOpen && (
                 <button
                     onClick={() => setIsOpen(true)}
-                    className="w-14 h-14 bg-red-700 text-white rounded-full flex items-center justify-center shadow-2xl hover:scale-110 transition-all active:scale-95 border-4 border-neutral-900 group"
+                    className="w-14 h-14 bg-red-700 text-white rounded-full flex items-center justify-center shadow-2xl hover:scale-110 transition-all active:scale-95 border-4 border-neutral-900 group relative"
                 >
                     <MessageSquare className="w-6 h-6 group-hover:rotate-12 transition-transform" />
-                    {store.messages.length > 0 && <span className="absolute top-0 right-0 w-4 h-4 bg-emerald-500 rounded-full border-2 border-neutral-900 animate-pulse"></span>}
+                    {store.messages.length > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-neutral-900 animate-pulse"></span>}
                 </button>
             )}
 
             {isOpen && (
-                <div className="bg-neutral-900 border border-neutral-800 w-[380px] h-[550px] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 duration-300">
+                <div className="bg-neutral-900 border border-neutral-800 w-[380px] h-[550px] rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
                     {/* Header */}
-                    <div className="p-4 bg-neutral-950 border-b border-neutral-800 flex justify-between items-center shrink-0">
+                    <div className="p-5 bg-neutral-950 border-b border-neutral-800 flex justify-between items-center shrink-0">
                         <div className="flex items-center gap-3">
                             {(!showList && isAdmin) && (
-                                <button onClick={() => setShowList(true)} className="p-1.5 hover:bg-neutral-800 rounded-lg text-neutral-400">
+                                <button onClick={() => setShowList(true)} className="p-2 hover:bg-neutral-800 rounded-xl text-neutral-400">
                                     <ChevronLeft className="w-5 h-5" />
                                 </button>
                             )}
                             <div>
-                                <h3 className="text-xs font-black uppercase tracking-widest text-neutral-100">{showList ? 'Contacts' : currentRecipientName}</h3>
-                                <p className="text-[9px] text-neutral-500 font-bold uppercase">{showList ? 'Sélectionner un fil' : 'Discussion en direct'}</p>
+                                <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-neutral-100">{showList ? 'Contacts Anistour' : currentRecipientName}</h3>
+                                <p className="text-[9px] text-neutral-500 font-bold uppercase tracking-wider">{showList ? 'Sélectionner un destinataire' : 'Ligne Directe Cloud'}</p>
                             </div>
                         </div>
-                        <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-neutral-800 rounded-lg text-neutral-500 hover:text-white transition-colors">
+                        <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-neutral-800 rounded-xl text-neutral-500 hover:text-white transition-colors">
                             <X className="w-5 h-5" />
                         </button>
                     </div>
 
                     {showList && isAdmin ? (
-                        /* User List View (Admins only by default) */
-                        <div className="flex-1 flex flex-col overflow-hidden bg-neutral-950/30">
-                            <div className="p-3 border-b border-neutral-800/50">
+                        /* ADMIN LIST VIEW */
+                        <div className="flex-1 flex flex-col overflow-hidden bg-neutral-950/20">
+                            <div className="p-4 border-b border-neutral-800/50">
                                 <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" />
+                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" />
                                     <input
                                         type="text"
-                                        placeholder="Rechercher un agent..."
-                                        className="w-full bg-neutral-900 border border-neutral-800 rounded-xl py-2 pl-9 pr-4 text-xs outline-none focus:border-red-700"
+                                        placeholder="Filtrer les agents..."
+                                        className="w-full bg-neutral-900 border border-neutral-800 rounded-2xl py-3 pl-11 pr-4 text-xs outline-none focus:border-red-700 font-medium"
                                         value={searchQuery}
                                         onChange={e => setSearchQuery(e.target.value)}
                                     />
                                 </div>
                             </div>
-                            <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+
+                            <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
                                 {/* Broadcast Option */}
                                 <button
                                     onClick={() => { setSelectedRecipientId('broadcast_agents'); setShowList(false); }}
-                                    className={`w-full p-4 rounded-2xl flex items-center gap-4 transition-all ${selectedRecipientId === 'broadcast_agents' ? 'bg-red-700 text-white shadow-lg' : 'hover:bg-neutral-800 text-neutral-400'}`}
+                                    className="w-full p-4 rounded-2xl flex items-center gap-4 transition-all bg-red-950/20 border border-red-900/20 hover:bg-red-900/30 group"
                                 >
-                                    <div className={`p-2 rounded-xl ${selectedRecipientId === 'broadcast_agents' ? 'bg-white/20' : 'bg-red-900/20 text-red-500'}`}>
-                                        <Filter className="w-4 h-4" />
+                                    <div className="p-3 rounded-xl bg-red-700 text-white shadow-lg shadow-red-900/40">
+                                        <Filter className="w-5 h-5" />
                                     </div>
                                     <div className="text-left">
-                                        <p className="text-xs font-black uppercase tracking-widest">DIFFUSION GÉNÉRALE</p>
-                                        <p className="text-[9px] opacity-60">Visible par tous les agents</p>
+                                        <p className="text-xs font-black uppercase tracking-widest text-red-500">CANAL GÉNÉRAL</p>
+                                        <p className="text-[9px] text-neutral-500 font-bold">Visible par toute l'équipe</p>
                                     </div>
                                 </button>
 
-                                <div className="px-2 pt-4 pb-2 text-[9px] font-black uppercase tracking-widest text-neutral-600">Agents & Assistants</div>
+                                <div className="px-3 pt-6 pb-2 text-[9px] font-black uppercase tracking-[0.2em] text-neutral-600">Agents & Collaborateurs</div>
 
-                                {filteredRecipients.length === 0 && <p className="text-center py-10 text-xs text-neutral-700 italic">Aucun agent trouvé</p>}
+                                {filteredRecipients.length === 0 && (
+                                    <div className="py-10 text-center opacity-40 italic text-xs">Aucun agent disponible</div>
+                                )}
 
                                 {filteredRecipients.map(u => (
                                     <button
                                         key={u.id}
                                         onClick={() => { setSelectedRecipientId(u.id); setShowList(false); }}
-                                        className={`w-full p-3 rounded-2xl flex items-center gap-3 transition-all ${selectedRecipientId === u.id ? 'bg-neutral-800 border-neutral-700' : 'hover:bg-neutral-800/50'}`}
+                                        className="w-full p-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-neutral-800/50 border border-transparent hover:border-neutral-800 group"
                                     >
-                                        <div className="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center border border-neutral-700 font-black text-xs text-neutral-400">
-                                            {u.name.substring(0, 2).toUpperCase()}
+                                        <div className="w-12 h-12 bg-neutral-950 border border-neutral-800 rounded-full flex items-center justify-center font-black text-sm text-neutral-500 group-hover:border-red-600/50 transition-colors">
+                                            {(u.name || 'A').substring(0, 2).toUpperCase()}
                                         </div>
-                                        <div className="text-left flex-1 min-w-0">
-                                            <p className="text-xs font-bold text-neutral-200 truncate">{u.name}</p>
-                                            <p className="text-[9px] text-neutral-500 uppercase font-black">{u.role}</p>
+                                        <div className="text-left flex-1">
+                                            <p className="text-sm font-bold text-neutral-100">{u.name || 'Agent'}</p>
+                                            <p className="text-[9px] text-neutral-500 font-black uppercase">{u.role}</p>
                                         </div>
-                                        <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                                        <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full shadow-lg shadow-emerald-900/40"></div>
                                     </button>
                                 ))}
                             </div>
                         </div>
                     ) : (
-                        /* Messages View */
+                        /* MESSAGES VIEW */
                         <>
-                            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-neutral-900/20">
+                            <div ref={scrollRef} className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar bg-neutral-900/30">
                                 {filteredMessages.length === 0 && (
-                                    <div className="h-full flex flex-col items-center justify-center text-center p-8">
-                                        <div className="w-12 h-12 bg-neutral-800 rounded-full flex items-center justify-center mb-4 border border-neutral-700">
-                                            <MessageSquare className="w-6 h-6 text-neutral-600" />
+                                    <div className="h-full flex flex-col items-center justify-center text-center p-10">
+                                        <div className="w-16 h-16 bg-neutral-950 rounded-full flex items-center justify-center mb-6 border border-neutral-800">
+                                            <MessageSquare className="w-8 h-8 text-neutral-700" />
                                         </div>
-                                        <p className="text-xs text-neutral-500 font-bold uppercase tracking-widest opacity-40">Début de la discussion</p>
+                                        <p className="text-[10px] text-neutral-600 font-black uppercase tracking-widest leading-loose">Début de la liaison cryptée<br />Aucun message pour le moment</p>
                                     </div>
                                 )}
-                                {filteredMessages.map(m => {
+                                {filteredMessages.map((m, idx) => {
                                     const isMe = m.senderId === currentUser.id;
                                     return (
-                                        <div key={m.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                                            <div className={`max-w-[85%] p-3.5 rounded-2xl text-xs relative ${isMe ? 'bg-red-700 text-white rounded-tr-none shadow-xl' : 'bg-neutral-800 text-neutral-200 rounded-tl-none border border-neutral-700 shadow-lg'}`}>
+                                        <div key={m.id || idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                            <div className={`max-w-[85%] p-4 rounded-3xl relative shadow-xl ${isMe ? 'bg-red-700 text-white rounded-tr-none' : 'bg-neutral-800 text-neutral-200 rounded-tl-none border border-neutral-700'}`}>
                                                 {!isMe && (
-                                                    <div className="flex items-center gap-1.5 mb-1.5 opacity-50">
-                                                        <span className="text-[8px] font-black uppercase tracking-widest">{m.senderName}</span>
-                                                        {m.senderRole === UserRole.ADMIN ? <Shield className="w-2 h-2" /> : <UserIcon className="w-2 h-2" />}
+                                                    <div className="flex items-center gap-2 mb-2 opacity-50">
+                                                        <span className="text-[9px] font-black uppercase tracking-wider">{m.senderName}</span>
+                                                        {m.senderRole === UserRole.ADMIN ? <Shield className="w-2.5 h-2.5" /> : <UserIcon className="w-2.5 h-2.5" />}
                                                     </div>
                                                 )}
-                                                <p className="leading-relaxed font-medium whitespace-pre-wrap">{m.text}</p>
-                                                <div className="flex justify-end mt-1.5">
-                                                    <span className="text-[7px] opacity-40 font-black">{new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                <p className="text-xs leading-relaxed font-medium whitespace-pre-wrap">{m.text}</p>
+                                                <div className="flex justify-end mt-2">
+                                                    <span className="text-[8px] opacity-40 font-black tracking-widest">{new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -209,19 +212,19 @@ const Chat: React.FC<ChatProps> = ({ store }) => {
                                 })}
                             </div>
 
-                            <form onSubmit={handleSendMessage} className="p-4 bg-neutral-950 border-t border-neutral-800 flex gap-2 shrink-0">
+                            <form onSubmit={handleSendMessage} className="p-5 bg-neutral-950 border-t border-neutral-800 flex gap-3 shrink-0">
                                 <input
                                     type="text"
                                     value={text}
                                     onChange={(e) => setText(e.target.value)}
-                                    placeholder="Message..."
-                                    className="flex-1 bg-neutral-900 border border-neutral-800 p-3.5 rounded-2xl text-xs focus:outline-none focus:border-red-700 text-neutral-200 transition-all font-medium"
+                                    placeholder="Écrivez ici..."
+                                    className="flex-1 bg-neutral-900 border border-neutral-800 p-4 rounded-2xl text-xs focus:outline-none focus:border-red-700 text-neutral-200 transition-all font-bold placeholder:text-neutral-700"
                                 />
                                 <button
                                     disabled={!text.trim() || !selectedRecipientId}
-                                    className="p-3.5 bg-red-700 text-white rounded-2xl hover:bg-red-600 disabled:opacity-50 disabled:grayscale transition-all active:scale-90 shadow-lg shadow-red-900/20"
+                                    className="p-4 bg-red-700 text-white rounded-2xl hover:bg-red-600 disabled:opacity-30 transition-all active:scale-95 shadow-xl shadow-red-900/30"
                                 >
-                                    <Send className="w-4 h-4" />
+                                    <Send className="w-5 h-5" />
                                 </button>
                             </form>
                         </>
