@@ -239,17 +239,11 @@ export function useFleetStore() {
 
   const getFinancialStats = () => {
     const validEntries = entries.filter(e => e.status !== MaintenanceStatus.REJECTED);
-    const revenue = validEntries.filter(e => e.type === EntryType.REVENUE).reduce((sum, e) => sum + e.amount, 0);
-
-    // Vehicle specifics
-    const vehicleExpenses = validEntries.filter(e => e.type !== EntryType.REVENUE).reduce((sum, e) => sum + e.amount, 0);
-
-    // Global expenses
-    const globalTotal = globalExpenses.reduce((sum, e) => sum + e.amount, 0);
-
-    const purchaseTotal = vehicles.reduce((sum, v) => sum + v.purchasePrice, 0);
+    const revenue = validEntries.filter(e => e.type === EntryType.REVENUE).reduce((sum, e) => sum + (e.amount || 0), 0);
+    const vehicleExpenses = validEntries.filter(e => e.type !== EntryType.REVENUE).reduce((sum, e) => sum + (e.amount || 0), 0);
+    const globalTotal = globalExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+    const purchaseTotal = vehicles.reduce((sum, v) => sum + (v.purchasePrice || 0), 0);
     const salesTotal = vehicles.filter(v => v.isArchived).reduce((sum, v) => sum + (v.salePrice || 0), 0);
-
     const totalExpenses = vehicleExpenses + globalTotal;
     const netProfit = revenue - totalExpenses - (purchaseTotal - salesTotal);
 

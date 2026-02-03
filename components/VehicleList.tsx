@@ -54,7 +54,7 @@ const VehicleList: React.FC<VehicleListProps> = ({ store }) => {
           </thead>
           <tbody className="divide-y divide-neutral-800">
             {activeVehicles.map(vehicle => {
-              const alertCount = vehicle.maintenanceConfigs?.filter(cfg => (cfg.nextDueKm - vehicle.lastMileage) < 1000).length || 0;
+              const alertCount = (vehicle.maintenanceConfigs || []).filter(cfg => ((cfg.nextDueKm ?? 0) - (vehicle.lastMileage ?? 0)) < 1000).length;
 
               return (
                 <tr
@@ -159,17 +159,20 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
   const vehicleEntries = store.entries.filter(e => e.vehicleId === vehicle.id);
   const filteredEntries = vehicleEntries.filter(e => {
     const matchDate = filterDate ? e.date === filterDate : true;
-    const matchText = filterText ? (e.description?.toLowerCase().includes(filterText.toLowerCase()) || e.amount.toString().includes(filterText)) : true;
+    const description = e.description || e.designation || '';
+    const amountStr = (e.amount ?? 0).toString();
+    const matchText = filterText ? (description.toLowerCase().includes(filterText.toLowerCase()) || amountStr.includes(filterText)) : true;
     return matchDate && matchText;
   });
 
   // Calculations
-  const totalRevenue = vehicleEntries.filter(e => e.type === EntryType.REVENUE).reduce((sum, e) => sum + e.amount, 0);
-  const totalExpenses = vehicleEntries.filter(e => e.type !== EntryType.REVENUE).reduce((sum, e) => sum + e.amount, 0);
+  const totalRevenue = vehicleEntries.filter(e => e.type === EntryType.REVENUE).reduce((sum, e) => sum + (e.amount || 0), 0);
+  const totalExpenses = vehicleEntries.filter(e => e.type !== EntryType.REVENUE).reduce((sum, e) => sum + (e.amount || 0), 0);
   const netProfit = totalRevenue - totalExpenses;
 
-  // Date Calc
-  const regDate = new Date(vehicle.registrationDate);
+  // Date Calc Safety
+  const regDateStr = vehicle.registrationDate || new Date().toISOString();
+  const regDate = new Date(regDateStr);
   const now = new Date();
 
   // Months Active: From Registration to Current Date
@@ -178,7 +181,8 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
   const monthlyProfit = netProfit / monthsActive;
 
   const resaleVal = Number(simulatedResale) || 0;
-  const projectedResult = netProfit + (resaleVal - vehicle.purchasePrice);
+  const purchasePrice = vehicle.purchasePrice || 0;
+  const projectedResult = netProfit + (resaleVal - purchasePrice);
 
   const getStatusColor = (status?: string) => {
     if (status === MaintenanceStatus.APPROVED) return 'text-emerald-500';
@@ -192,10 +196,14 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
         {/* Header */}
         <div className="p-6 border-b border-neutral-800 bg-neutral-950 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-4">
-            <img src={vehicle.photo} className="w-16 h-16 rounded-xl object-cover border border-neutral-800" />
+            <div className="w-16 h-16 rounded-xl overflow-hidden bg-neutral-950 border border-neutral-800 shrink-0">
+              <img src={vehicle.photo || '/car-placeholder.jpg'} className="w-full h-full object-cover" />
+            </div>
             <div>
-              <h2 className="text-xl font-black uppercase tracking-tighter text-white">{vehicle.name}</h2>
-              <p className="text-neutral-500 text-xs">Immatriculé le {new Date(vehicle.registrationDate).toLocaleDateString('fr-FR')}</p>
+              <h2 className="text-xl font-black uppercase tracking-tighter text-white">{vehicle.name || 'Véhicule sans nom'}</h2>
+              <p className="text-neutral-500 text-xs font-bold uppercase tracking-widest">
+                {vehicle.registrationDate ? `Immatriculé le ${new Date(vehicle.registrationDate).toLocaleDateString('fr-FR')}` : 'Date inconnue'}
+              </p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 bg-neutral-800 rounded-full hover:bg-neutral-700 transition-colors"><X className="w-5 h-5" /></button>
@@ -296,9 +304,11 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {(editingConfig ? tempConfigs : (vehicle.maintenanceConfigs || [])).map((cfg, idx) => {
+                    if (!cfg) return null;
                     const nextDue = cfg.nextDueKm ?? 0;
                     const interval = cfg.intervalKm || 1; // Prevent division by zero
-                    const remainingKm = nextDue - (vehicle.lastMileage ?? 0);
+                    const currentMileage = vehicle.lastMileage ?? 0;
+                    const remainingKm = nextDue - currentMileage;
                     const isUrgent = remainingKm < 500;
                     const progress = Math.max(0, Math.min(100, (1 - (remainingKm / interval)) * 100));
 
@@ -347,7 +357,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                                   }}
                                 />
                               ) : (
-                                <div className="text-sm font-black text-neutral-200">{cfg.intervalKm.toLocaleString()} KM</div>
+                                <div className="text-sm font-black text-neutral-200">{(cfg.intervalKm ?? 0).toLocaleString()} KM</div>
                               )}
                             </div>
                             <div className="space-y-1">
@@ -364,7 +374,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                                   }}
                                 />
                               ) : (
-                                <div className={`text-sm font-black ${isUrgent ? 'text-red-500 animate-pulse' : 'text-neutral-200'}`}>{cfg.nextDueKm.toLocaleString()} KM</div>
+                                <div className={`text-sm font-black ${isUrgent ? 'text-red-500 animate-pulse' : 'text-neutral-200'}`}>{(cfg.nextDueKm ?? 0).toLocaleString()} KM</div>
                               )}
                             </div>
                           </div>
