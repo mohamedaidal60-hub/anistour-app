@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useFleetStore } from '../store.ts';
 import { UserRole, Vehicle, MaintenanceConfig, EntryType, MaintenanceStatus, FinancialEntry } from '../types.ts';
 import { MAINTENANCE_TYPES, CURRENCY } from '../constants.ts';
-import { Plus, Search, Archive, Calendar, Ruler, Car, Camera, Wrench, FileText, X, Save, Filter, Trash2, Edit2, Calculator } from 'lucide-react';
+import { Plus, Search, Archive, Calendar, Ruler, Car, Camera, Wrench, FileText, X, Save, Filter, Trash2, Edit2, Calculator, AlertCircle, ChevronRight } from 'lucide-react';
 
 interface VehicleListProps {
   store: ReturnType<typeof useFleetStore>;
@@ -18,13 +18,14 @@ const VehicleList: React.FC<VehicleListProps> = ({ store }) => {
   return (
     <div className="space-y-6">
       {/* Header & Search */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div className="relative w-full sm:w-96">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" />
+      {/* Premium Header & Search */}
+      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-6 bg-neutral-900/30 p-6 rounded-[2rem] border border-neutral-800">
+        <div className="relative flex-1">
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-600" />
           <input
             type="text"
-            placeholder="Rechercher..."
-            className="w-full pl-12 pr-4 py-3 bg-neutral-900/50 border border-neutral-800 rounded-2xl focus:outline-none focus:border-red-600 transition-all text-sm"
+            placeholder="Rechercher par nom ou matricule..."
+            className="w-full pl-14 pr-6 py-4 bg-neutral-950/50 border border-neutral-800 rounded-2xl focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all text-sm font-medium placeholder:text-neutral-700"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -33,84 +34,102 @@ const VehicleList: React.FC<VehicleListProps> = ({ store }) => {
         {store.currentUser?.role === UserRole.ADMIN && (
           <button
             onClick={() => setShowAddForm(true)}
-            className="w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-red-700 hover:bg-red-600 rounded-2xl text-sm font-black uppercase tracking-tighter transition-all shadow-lg shadow-red-900/20 active:scale-95"
+            className="flex items-center justify-center gap-3 px-8 py-4 bg-red-700 hover:bg-red-600 text-white rounded-2xl text-sm font-black uppercase tracking-widest transition-all shadow-xl shadow-red-900/20 active:scale-95 border border-red-800/50"
           >
-            <Plus className="w-4 h-4 mr-2" /> Nouveau Véhicule
+            <Plus className="w-5 h-5" /> Nouveau Véhicule
           </button>
         )}
       </div>
 
-      {/* List View */}
-      <div className="bg-neutral-900/50 border border-neutral-800 rounded-3xl overflow-hidden shadow-2xl">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-neutral-950/50 text-neutral-500 border-b border-neutral-800">
-              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Véhicule</th>
-              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest hidden md:table-cell">Mise en Circ.</th>
-              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Kilométrage Actuel</th>
-              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest hidden lg:table-cell text-center">Alertes</th>
-              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-800">
-            {activeVehicles.map(vehicle => {
-              const alertCount = (vehicle.maintenanceConfigs || []).filter(cfg => ((cfg.nextDueKm ?? 0) - (vehicle.lastMileage ?? 0)) < 1000).length;
+      {/* Modern List View */}
+      <div className="bg-neutral-900/50 border border-neutral-800 rounded-[2.5rem] overflow-hidden shadow-2xl backdrop-blur-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-neutral-950 text-neutral-500 border-b border-neutral-800">
+                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em]">Parc Automobile</th>
+                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] hidden md:table-cell">Mise en Circ.</th>
+                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em]">Kilométrage Actuel</th>
+                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] hidden lg:table-cell text-center">Statut Maintenance</th>
+                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-800">
+              {activeVehicles.map(vehicle => {
+                const alertCount = (vehicle.maintenanceConfigs || []).filter(cfg => ((cfg.nextDueKm ?? 0) - (vehicle.lastMileage ?? 0)) < 1000).length;
 
-              return (
-                <tr
-                  key={vehicle.id}
-                  className="hover:bg-neutral-800/30 transition-all cursor-pointer group"
-                  onClick={() => setSelectedVehicle(vehicle)}
-                >
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl overflow-hidden bg-neutral-950 border border-neutral-800 shrink-0">
-                        <img src={vehicle.photo || '/car-placeholder.jpg'} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                return (
+                  <tr
+                    key={vehicle.id}
+                    className="hover:bg-neutral-800/40 transition-all cursor-pointer group"
+                    onClick={() => setSelectedVehicle(vehicle)}
+                  >
+                    <td className="px-8 py-5">
+                      <div className="flex items-center gap-5">
+                        <div className="w-14 h-14 rounded-2xl overflow-hidden bg-neutral-950 border border-neutral-800 shrink-0 shadow-lg relative">
+                          <img src={vehicle.photo || '/car-placeholder.jpg'} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                          <div className="absolute inset-0 bg-red-600/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-black text-neutral-100 text-base uppercase tracking-tighter truncate group-hover:text-red-500 transition-colors">{vehicle.name}</p>
+                          <p className="text-[10px] text-neutral-500 font-black uppercase tracking-widest mt-0.5">{vehicle.registrationNumber || 'IMMATRICULATION N/A'}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-black text-neutral-100 uppercase tracking-tighter">{vehicle.name}</p>
-                        <p className="text-[10px] text-neutral-500 font-bold uppercase">{vehicle.registrationNumber || 'Sans matricule'}</p>
+                    </td>
+                    <td className="px-8 py-5 hidden md:table-cell">
+                      <div className="flex items-center gap-2.5 text-neutral-400">
+                        <Calendar className="w-4 h-4 text-red-600/50" />
+                        <span className="text-xs font-bold uppercase tracking-wider">{new Date(vehicle.registrationDate).toLocaleDateString('fr-FR')}</span>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 hidden md:table-cell">
-                    <div className="flex items-center gap-2 text-neutral-400">
-                      <Calendar className="w-3.5 h-3.5" />
-                      <span className="text-xs font-bold">{new Date(vehicle.registrationDate).toLocaleDateString('fr-FR')}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div>
-                      <p className="text-sm font-black text-white">{(vehicle.lastMileage ?? 0).toLocaleString()} <span className="text-[9px] text-neutral-600">KM</span></p>
-                      {vehicle.mileageUpdatedBy && (
-                        <p className="text-[8px] text-neutral-600 font-bold uppercase tracking-widest mt-0.5">Par {vehicle.mileageUpdatedBy}</p>
+                    </td>
+                    <td className="px-8 py-5">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-black text-white">{(vehicle.lastMileage ?? 0).toLocaleString()}</span>
+                          <span className="text-[9px] font-black text-neutral-600 uppercase tracking-widest">KM</span>
+                        </div>
+                        {vehicle.mileageUpdatedBy && (
+                          <div className="flex items-center gap-1 mt-1 opacity-60">
+                            <span className="text-[8px] text-neutral-500 font-black uppercase">MàJ par :</span>
+                            <span className="text-[8px] text-red-500 font-black uppercase">{vehicle.mileageUpdatedBy}</span>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-8 py-5 hidden lg:table-cell text-center">
+                      {alertCount > 0 ? (
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-950/30 text-red-500 text-[10px] font-black rounded-lg border border-red-900/30 animate-pulse">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          <span>{alertCount} ALERTES</span>
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-950/30 text-emerald-500 text-[10px] font-black rounded-lg border border-emerald-900/30">
+                          <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
+                          <span>OPÉRATIONNEL</span>
+                        </div>
                       )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 hidden lg:table-cell text-center">
-                    {alertCount > 0 ? (
-                      <span className="px-2 py-1 bg-red-900/20 text-red-500 text-[10px] font-black rounded-lg border border-red-900/30">{alertCount} ALERTES</span>
-                    ) : (
-                      <span className="px-2 py-1 bg-emerald-900/20 text-emerald-500 text-[10px] font-black rounded-lg border border-emerald-900/30">OK</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setSelectedVehicle(vehicle); }}
-                      className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-neutral-700 hover:text-white"
-                    >
-                      Détails
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    </td>
+                    <td className="px-8 py-5 text-right">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setSelectedVehicle(vehicle); }}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border border-neutral-800 hover:border-neutral-600"
+                      >
+                        Consulter <ChevronRight className="w-3 h-3" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
         {activeVehicles.length === 0 && (
-          <div className="p-20 text-center">
-            <Car className="w-12 h-12 text-neutral-800 mx-auto mb-4" />
-            <p className="text-neutral-500 text-sm font-bold uppercase tracking-widest">Aucun véhicule trouvé</p>
+          <div className="p-24 text-center bg-neutral-950/20 backdrop-blur-md">
+            <div className="w-20 h-20 bg-neutral-900 rounded-full flex items-center justify-center mx-auto mb-6 border border-neutral-800 shadow-2xl">
+              <Car className="w-10 h-10 text-neutral-700" />
+            </div>
+            <p className="text-neutral-500 text-xs font-black uppercase tracking-[0.3em]">Aucune unité détectée</p>
+            <p className="text-[10px] text-neutral-600 mt-2 uppercase font-bold italic">Affinez votre recherche ou ajoutez un nouveau véhicule.</p>
           </div>
         )}
       </div>
@@ -193,27 +212,40 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 bg-black/90 backdrop-blur-md overflow-hidden">
       <div className="bg-neutral-900 border border-neutral-800 rounded-2xl sm:rounded-3xl w-full max-w-4xl h-[95vh] sm:h-[90vh] flex flex-col relative overflow-hidden shadow-2xl">
-        {/* Header */}
-        <div className="p-6 border-b border-neutral-800 bg-neutral-950 flex justify-between items-center shrink-0">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-xl overflow-hidden bg-neutral-950 border border-neutral-800 shrink-0">
-              <img src={vehicle.photo || '/car-placeholder.jpg'} className="w-full h-full object-cover" />
+        {/* Premium Header with Dynamic Backdrop */}
+        <div className="relative shrink-0 border-b border-neutral-800 bg-neutral-950 px-6 py-8 sm:px-8 overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-red-900/10 blur-[100px] pointer-events-none"></div>
+          <div className="relative flex items-center gap-6">
+            <div className="w-24 h-24 rounded-2xl overflow-hidden bg-neutral-900 border border-neutral-800 shadow-2xl shrink-0 group">
+              <img src={vehicle.photo || '/car-placeholder.jpg'} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
             </div>
-            <div>
-              <h2 className="text-xl font-black uppercase tracking-tighter text-white">{vehicle.name || 'Véhicule sans nom'}</h2>
-              <p className="text-neutral-500 text-xs font-bold uppercase tracking-widest">
-                {vehicle.registrationDate ? `Immatriculé le ${new Date(vehicle.registrationDate).toLocaleDateString('fr-FR')}` : 'Date inconnue'}
-              </p>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3 mb-1">
+                <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter text-white truncate">{vehicle.name || 'Véhicule sans nom'}</h2>
+                <div className="px-2 py-0.5 bg-neutral-800 border border-neutral-700 rounded text-[9px] font-black text-neutral-400 uppercase tracking-widest hidden sm:block">Actif</div>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                <div className="flex items-center gap-1.5 text-neutral-500">
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider">{vehicle.registrationDate ? `Mise en circ. : ${new Date(vehicle.registrationDate).toLocaleDateString('fr-FR')}` : 'Date d\'immatriculation inconnue'}</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-neutral-500">
+                  <Ruler className="w-3.5 h-3.5" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider">Index : <span className="text-white">{(vehicle.lastMileage ?? 0).toLocaleString()} KM</span></span>
+                </div>
+              </div>
             </div>
+            <button onClick={onClose} className="p-3 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-2xl transition-all shadow-xl border border-neutral-800 active:scale-95">
+              <X className="w-6 h-6" />
+            </button>
           </div>
-          <button onClick={onClose} className="p-2 bg-neutral-800 rounded-full hover:bg-neutral-700 transition-colors"><X className="w-5 h-5" /></button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-neutral-800 bg-neutral-950 shrink-0">
+        {/* Premium Tab Navigation */}
+        <div className="flex border-b border-neutral-800 bg-neutral-950 shrink-0 p-2 gap-2">
           <button
             onClick={() => setTab('carnet')}
-            className={`flex-1 py-4 text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors ${tab === 'carnet' ? 'bg-neutral-900 text-red-500 border-b-2 border-red-600' : 'text-neutral-500 hover:text-white'}`}
+            className={`flex-1 py-4 rounded-2xl text-xs sm:text-sm font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all duration-300 ${tab === 'carnet' ? 'bg-red-700 text-white shadow-lg shadow-red-900/20' : 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-900'}`}
           >
             <Wrench className="w-4 h-4" /> Carnet & Historique
           </button>
@@ -221,7 +253,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
           {isAdmin && (
             <button
               onClick={() => setTab('calculs')}
-              className={`flex-1 py-4 text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors ${tab === 'calculs' ? 'bg-neutral-900 text-red-500 border-b-2 border-red-600' : 'text-neutral-500 hover:text-white'}`}
+              className={`flex-1 py-4 rounded-2xl text-xs sm:text-sm font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all duration-300 ${tab === 'calculs' ? 'bg-red-700 text-white shadow-lg shadow-red-900/20' : 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-900'}`}
             >
               <FileText className="w-4 h-4" /> Rentabilité & Calculs
             </button>
@@ -313,23 +345,23 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                     const progress = Math.max(0, Math.min(100, (1 - (remainingKm / interval)) * 100));
 
                     return (
-                      <div key={idx} className="bg-neutral-900/50 p-4 rounded-xl border border-neutral-800 flex flex-col gap-3 relative group transition-all hover:border-neutral-700">
+                      <div key={idx} className={`relative p-5 rounded-2xl border transition-all duration-300 flex flex-col gap-4 group ${isUrgent ? 'bg-red-950/10 border-red-900/30' : 'bg-neutral-900/40 border-neutral-800 hover:border-neutral-700'}`}>
                         {editingConfig && (
                           <button
                             onClick={() => setTempConfigs(tempConfigs.filter((_, i) => i !== idx))}
-                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-700 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 transition-all border border-red-800 z-10"
+                            className="absolute -top-2 -right-2 w-7 h-7 bg-red-600 text-white rounded-full flex items-center justify-center shadow-xl hover:bg-red-500 transition-all border border-neutral-950 z-20"
                           >
-                            <Trash2 className="w-3 h-3" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         )}
 
-                        <div className="space-y-3">
-                          <div className="space-y-1">
-                            <label className="text-[9px] uppercase font-bold text-neutral-600">Désignation</label>
+                        <div className="flex justify-between items-start">
+                          <div className="min-w-0">
+                            <label className="text-[8px] font-black uppercase tracking-[0.2em] text-neutral-600 mb-1 block">Maintenance</label>
                             {editingConfig ? (
                               <input
                                 type="text"
-                                className="w-full bg-neutral-950 border border-neutral-700 rounded p-2 text-xs font-bold text-white focus:border-red-600 outline-none"
+                                className="w-full bg-neutral-950 border border-neutral-700 rounded-lg p-2 text-xs font-bold text-white focus:border-red-600 outline-none"
                                 value={cfg.type}
                                 onChange={(e) => {
                                   const newC = [...tempConfigs];
@@ -338,57 +370,62 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                                 }}
                               />
                             ) : (
-                              <div className="text-xs font-black uppercase text-neutral-400 truncate tracking-wider">{cfg.type}</div>
+                              <h4 className="text-sm font-black text-neutral-100 uppercase tracking-tighter truncate group-hover:text-red-500 transition-colors">{cfg.type}</h4>
                             )}
                           </div>
+                          {isUrgent && !editingConfig && <div className="p-1 bg-red-600 rounded-lg animate-pulse shadow-lg shadow-red-900/40"><AlertCircle className="w-3 h-3 text-white" /></div>}
+                        </div>
 
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <label className="text-[9px] uppercase font-bold text-neutral-600">Intervalle</label>
-                              {editingConfig ? (
-                                <input
-                                  type="number"
-                                  className="w-full bg-neutral-950 border border-neutral-700 rounded p-2 text-xs font-bold text-white focus:border-red-600 outline-none"
-                                  value={cfg.intervalKm}
-                                  onChange={(e) => {
-                                    const newC = [...tempConfigs];
-                                    newC[idx].intervalKm = Number(e.target.value);
-                                    setTempConfigs(newC);
-                                  }}
-                                />
-                              ) : (
-                                <div className="text-sm font-black text-neutral-200">{(cfg.intervalKm ?? 0).toLocaleString()} KM</div>
-                              )}
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[9px] uppercase font-bold text-neutral-600">Echéance</label>
-                              {editingConfig ? (
-                                <input
-                                  type="number"
-                                  className="w-full bg-neutral-950 border border-neutral-700 rounded p-2 text-xs font-bold text-white focus:border-red-600 outline-none"
-                                  value={cfg.nextDueKm}
-                                  onChange={(e) => {
-                                    const newC = [...tempConfigs];
-                                    newC[idx].nextDueKm = Number(e.target.value);
-                                    setTempConfigs(newC);
-                                  }}
-                                />
-                              ) : (
-                                <div className={`text-sm font-black ${isUrgent ? 'text-red-500 animate-pulse' : 'text-neutral-200'}`}>{(cfg.nextDueKm ?? 0).toLocaleString()} KM</div>
-                              )}
-                            </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-[8px] font-black uppercase tracking-widest text-neutral-600">Intervalle</label>
+                            {editingConfig ? (
+                              <input
+                                type="number"
+                                className="w-full bg-neutral-950 border border-neutral-700 rounded-lg p-2 text-[11px] font-bold text-white focus:border-red-600 outline-none"
+                                value={cfg.intervalKm}
+                                onChange={(e) => {
+                                  const newC = [...tempConfigs];
+                                  newC[idx].intervalKm = Number(e.target.value);
+                                  setTempConfigs(newC);
+                                }}
+                              />
+                            ) : (
+                              <div className="text-xs font-black text-neutral-200">{(cfg.intervalKm ?? 0).toLocaleString()} <span className="text-[8px] text-neutral-600">KM</span></div>
+                            )}
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[8px] font-black uppercase tracking-widest text-neutral-600">Échéance</label>
+                            {editingConfig ? (
+                              <input
+                                type="number"
+                                className="w-full bg-neutral-950 border border-neutral-700 rounded-lg p-2 text-[11px] font-bold text-white focus:border-red-600 outline-none"
+                                value={cfg.nextDueKm}
+                                onChange={(e) => {
+                                  const newC = [...tempConfigs];
+                                  newC[idx].nextDueKm = Number(e.target.value);
+                                  setTempConfigs(newC);
+                                }}
+                              />
+                            ) : (
+                              <div className={`text-xs font-black ${isUrgent ? 'text-red-500' : 'text-neutral-200'}`}>{(cfg.nextDueKm ?? 0).toLocaleString()} <span className="text-[8px] opacity-60">KM</span></div>
+                            )}
                           </div>
                         </div>
 
                         {!editingConfig && (
-                          <div className="mt-2 space-y-1">
-                            <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-neutral-500">
-                              <span>{remainingKm < 0 ? 'DÉPASSÉ' : 'RESTE'}</span>
-                              <span>{Math.abs(remainingKm).toLocaleString()} KM</span>
+                          <div className="mt-auto pt-2 space-y-2">
+                            <div className="flex justify-between items-baseline px-0.5">
+                              <span className={`text-[9px] font-black uppercase tracking-widest ${remainingKm < 0 ? 'text-red-500' : 'text-neutral-500'}`}>
+                                {remainingKm < 0 ? 'Retard critique' : 'Distance restante'}
+                              </span>
+                              <span className={`text-[10px] font-black ${remainingKm < 0 ? 'text-red-500' : 'text-neutral-300'}`}>
+                                {Math.abs(remainingKm).toLocaleString()} KM
+                              </span>
                             </div>
-                            <div className="h-1.5 bg-neutral-950 rounded-full overflow-hidden border border-neutral-800">
+                            <div className="h-2 bg-neutral-950 rounded-full overflow-hidden border border-neutral-800 shadow-inner">
                               <div
-                                className={`h-full transition-all duration-700 ${isUrgent ? 'bg-red-600 animate-pulse' : 'bg-red-900 border-r border-red-500'}`}
+                                className={`h-full transition-all duration-1000 ${isUrgent ? 'bg-gradient-to-r from-red-700 to-red-500' : 'bg-gradient-to-r from-red-900 to-red-600'}`}
                                 style={{ width: `${progress}%` }}
                               />
                             </div>
