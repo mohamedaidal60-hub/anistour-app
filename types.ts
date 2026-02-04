@@ -22,13 +22,13 @@ export enum MaintenanceStatus {
 export enum EntryType {
   REVENUE = 'REVENUE',
   EXPENSE_SIMPLE = 'EXPENSE',
-  EXPENSE_MAINTENANCE = 'MAINTENANCE'
+  EXPENSE_MAINTENANCE = 'MAINTENANCE',
+  FUNDING = 'FUNDING'
 }
 
 export interface MaintenanceConfig {
   type: string;
   intervalKm: number;
-  // Previously nextNotifyKm, now a specific odometer target
   nextDueKm: number;
   lastPerformedKm?: number;
 }
@@ -36,9 +36,9 @@ export interface MaintenanceConfig {
 export interface Vehicle {
   id: string;
   name: string;
+  registrationNumber: string;
   model?: string;
   year?: number;
-  registrationNumber?: string;
   photo?: string;
   image?: string;
   registrationDate: string;
@@ -50,25 +50,31 @@ export interface Vehicle {
   maintenanceConfigs: MaintenanceConfig[];
 }
 
+export interface CashDesk {
+  id: string;
+  userId: string;
+  userName: string;
+  balance: number;
+  createdAt: string;
+}
+
 export interface FinancialEntry {
   id: string;
   vehicleId?: string;
+  cashDeskId?: string;
   date: string;
   amount: number;
   type: EntryType;
-  description: string; // Replaces designation
+  description: string;
   mileageAtEntry?: number;
   status?: MaintenanceStatus;
   maintenanceType?: string;
   agentName?: string;
   proofPhoto?: string;
-  info?: string; // For backward compatibility with some components
-
-  // Backward compatibility optional fields
+  info?: string;
   designation?: string;
   userName?: string;
   createdAt?: string;
-
 }
 
 export interface Message {
@@ -76,7 +82,7 @@ export interface Message {
   senderId: string;
   senderName: string;
   senderRole: UserRole;
-  receiverId: string; // Admin ID or Agent ID
+  receiverId: string;
   text: string;
   timestamp: string;
 }

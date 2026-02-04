@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { Vehicle, FinancialEntry, Notification, User, UserRole, MaintenanceStatus, EntryType, GlobalExpense, Message } from './types.ts';
+import { Vehicle, FinancialEntry, Notification, User, UserRole, MaintenanceStatus, EntryType, GlobalExpense, Message, CashDesk } from './types.ts';
 
 const SUPABASE_URL = 'https://zxxrazexrwokihbzhina.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Nr7EYzoE9HkOyncjhPTLSw_R6Dm0-1W';
@@ -29,6 +29,7 @@ export function useFleetStore() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [users, setUsers] = useState<User[]>(() => getLocal('users', []));
+  const [cashDesks, setCashDesks] = useState<CashDesk[]>(() => getLocal('cash_desks', []));
   const [appLogo, setAppLogoState] = useState<string>(() => getLocal('logo', ''));
   const [currentUser, setCurrentUserState] = useState<User | null>(() => getLocal('current_user', null));
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
@@ -66,6 +67,12 @@ export function useFleetStore() {
         setMessages(mData);
       }
 
+      const { data: cData } = await supabase.from('cash_desks').select('*');
+      if (cData) {
+        setCashDesks(cData);
+        setLocal('cash_desks', cData);
+      }
+
       const { data: uData } = await supabase.from('users').select('*');
       if (uData && uData.length > 0) {
         setUsers(uData);
@@ -87,66 +94,25 @@ export function useFleetStore() {
   useEffect(() => {
     fetchData();
 
-    // Supabase Realtime Subscriptions for multi-user sync
-    const vehiclesChannel = supabase
-      .channel('vehicles_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicles' }, (payload) => {
-        console.log('Vehicle change detected:', payload);
-        fetchData(); // Refresh all data when vehicles change
-      })
-      .subscribe();
+    // Supabase Realtime Subscriptions
+    const channels = [
+      'vehicles', 'entries', 'global_expenses', 'messages', 'users', 'cash_desks'
+    ].map(table =>
+      supabase.channel(`${table}_changes`)
+        .on('postgres_changes', { event: '*', schema: 'public', table }, () => fetchData())
+        .subscribe()
+    );
 
-    const entriesChannel = supabase
-      .channel('entries_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'entries' }, (payload) => {
-        console.log('Entry change detected:', payload);
-        fetchData(); // Refresh all data when entries change
-      })
-      .subscribe();
-
-    const expensesChannel = supabase
-      .channel('expenses_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'global_expenses' }, (payload) => {
-        console.log('Global expense change detected:', payload);
-        fetchData(); // Refresh all data when expenses change
-      })
-      .subscribe();
-
-    const messagesChannel = supabase
-      .channel('messages_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload) => {
-        console.log('Message detected:', payload);
-        fetchData();
-      })
-      .subscribe();
-
-    const usersChannel = supabase
-      .channel('users_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
-        console.log('User change detected:', payload);
-        fetchData(); // Refresh all data when users change
-      })
-      .subscribe();
-
-    // Cleanup subscriptions on unmount
     return () => {
-      supabase.removeChannel(vehiclesChannel);
-      supabase.removeChannel(entriesChannel);
-      supabase.removeChannel(expensesChannel);
-      supabase.removeChannel(messagesChannel);
-      supabase.removeChannel(usersChannel);
+      channels.forEach(ch => supabase.removeChannel(ch));
     };
   }, [fetchData]);
-
-  // Keep localStorage in sync as cache only (removed auto-persist on every state change)
-  // localStorage will only update when data comes from Supabase
 
   useEffect(() => {
     const newNotifs: Notification[] = [];
     vehicles.forEach(v => {
       if (v.isArchived) return;
       v.maintenanceConfigs?.forEach(cfg => {
-        // Logic: Alert if within 500km of the target
         const kmLeft = cfg.nextDueKm - v.lastMileage;
         if (kmLeft <= 500) {
           newNotifs.push({
@@ -168,6 +134,21 @@ export function useFleetStore() {
     setNotifications(newNotifs);
   }, [vehicles]);
 
+  const updateCashDeskBalance = async (deskId: string, amount: number, type: EntryType) => {
+    const desk = cashDesks.find(d => d.id === deskId);
+    if (!desk) return;
+
+    let newBalance = desk.balance;
+    if (type === EntryType.REVENUE || type === EntryType.FUNDING) {
+      newBalance += amount;
+    } else {
+      newBalance -= amount;
+    }
+
+    setCashDesks(prev => prev.map(d => d.id === deskId ? { ...d, balance: newBalance } : d));
+    await supabase.from('cash_desks').update({ balance: newBalance }).eq('id', deskId);
+  };
+
   const addVehicle = async (v: Vehicle) => {
     setVehicles(prev => [...prev, v]);
     await supabase.from('vehicles').insert([v]);
@@ -178,32 +159,27 @@ export function useFleetStore() {
     await supabase.from('vehicles').update(updatedV).eq('id', updatedV.id);
   };
 
-  const updateVehicleMileage = async (vehicleId: string, newMileage: number, agentName: string) => {
-    setVehicles(prev => prev.map(v => v.id === vehicleId ? { ...v, lastMileage: newMileage, mileageUpdatedBy: agentName } : v));
-    await supabase.from('vehicles').update({ lastMileage: newMileage, mileageUpdatedBy: agentName }).eq('id', vehicleId);
-  };
-
   const addEntry = async (e: FinancialEntry) => {
-    // Attach agent name if not present
     if (!e.agentName && currentUser) e.agentName = currentUser.name;
-
     setEntries(prev => [e, ...prev]);
 
-    // Update vehicle mileage if this entry has higher mileage
     if (e.vehicleId && e.mileageAtEntry) {
       const vehicle = vehicles.find(v => v.id === e.vehicleId);
       if (vehicle && e.mileageAtEntry > vehicle.lastMileage) {
-        const updatedVehicle = { ...vehicle, lastMileage: e.mileageAtEntry };
-        setVehicles(prev => prev.map(v => v.id === e.vehicleId ? updatedVehicle : v));
-        await supabase.from('vehicles').update({ lastMileage: e.mileageAtEntry }).eq('id', e.vehicleId);
+        await updateVehicleMileage(vehicle.id, e.mileageAtEntry, e.agentName || 'Système');
       }
     }
+
+    if (e.cashDeskId) {
+      await updateCashDeskBalance(e.cashDeskId, e.amount, e.type);
+    }
+
     await supabase.from('entries').insert([e]);
   };
 
-  const addGlobalExpense = async (e: GlobalExpense) => {
-    setGlobalExpenses(prev => [e, ...prev]);
-    await supabase.from('global_expenses').insert([e]);
+  const updateVehicleMileage = async (vehicleId: string, newMileage: number, agentName: string) => {
+    setVehicles(prev => prev.map(v => v.id === vehicleId ? { ...v, lastMileage: newMileage, mileageUpdatedBy: agentName } : v));
+    await supabase.from('vehicles').update({ lastMileage: newMileage, mileageUpdatedBy: agentName }).eq('id', vehicleId);
   };
 
   const approveMaintenance = async (entryId: string) => {
@@ -214,40 +190,27 @@ export function useFleetStore() {
     if (vehicle) {
       const newConfigs = vehicle.maintenanceConfigs.map(cfg => {
         if (cfg.type === entry.maintenanceType) {
-          // Maintenance done. Next target is roughly Current + Interval
-          // We assume the mileageAtEntry is correct for when it was done
           const doneAt = entry.mileageAtEntry || vehicle.lastMileage;
-          const nextTarget = doneAt + cfg.intervalKm;
-          return { ...cfg, lastPerformedKm: doneAt, nextDueKm: nextTarget };
+          return { ...cfg, lastPerformedKm: doneAt, nextDueKm: doneAt + cfg.intervalKm };
         }
         return cfg;
       });
-
-      const updatedVehicle = { ...vehicle, maintenanceConfigs: newConfigs };
-      setVehicles(prev => prev.map(v => v.id === entry.vehicleId ? updatedVehicle : v));
-      await supabase.from('vehicles').update({ maintenanceConfigs: newConfigs }).eq('id', entry.vehicleId);
-
+      await updateVehicle({ ...vehicle, maintenanceConfigs: newConfigs });
       setEntries(prev => prev.map(e => e.id === entryId ? { ...e, status: MaintenanceStatus.APPROVED } : e));
       await supabase.from('entries').update({ status: MaintenanceStatus.APPROVED }).eq('id', entryId);
     }
   };
 
-  const archiveVehicle = async (id: string, salePrice: number) => {
-    setVehicles(prev => prev.map(v => v.id === id ? { ...v, isArchived: true, salePrice } : v));
-    await supabase.from('vehicles').update({ isArchived: true, salePrice }).eq('id', id);
-  };
-
   const getFinancialStats = () => {
     const validEntries = entries.filter(e => e.status !== MaintenanceStatus.REJECTED);
     const revenue = validEntries.filter(e => e.type === EntryType.REVENUE).reduce((sum, e) => sum + (e.amount || 0), 0);
-    const vehicleExpenses = validEntries.filter(e => e.type !== EntryType.REVENUE).reduce((sum, e) => sum + (e.amount || 0), 0);
+    const vehicleExpenses = validEntries.filter(e => e.type !== EntryType.REVENUE && e.type !== EntryType.FUNDING).reduce((sum, e) => sum + (e.amount || 0), 0);
     const globalTotal = globalExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
     const purchaseTotal = vehicles.reduce((sum, v) => sum + (v.purchasePrice || 0), 0);
     const salesTotal = vehicles.filter(v => v.isArchived).reduce((sum, v) => sum + (v.salePrice || 0), 0);
     const totalExpenses = vehicleExpenses + globalTotal;
     const netProfit = revenue - totalExpenses - (purchaseTotal - salesTotal);
 
-    // Cost per vehicle logic
     const activeVehicles = vehicles.filter(v => !v.isArchived);
     const costPerVehicle = activeVehicles.length > 0 ? (globalTotal / activeVehicles.length) : 0;
 
@@ -259,44 +222,46 @@ export function useFleetStore() {
     const diffMonths = Math.max(1, Math.floor((new Date().getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
 
     return {
-      revenue,
-      vehicleExpenses,
-      globalExpenses: globalTotal,
-      totalExpenses,
-      netProfit,
-      monthlyProfit: netProfit / diffMonths,
-      costPerVehicle, // New metric
-      activeCount: activeVehicles.length
+      revenue, vehicleExpenses, globalExpenses: globalTotal, totalExpenses,
+      netProfit, monthlyProfit: netProfit / diffMonths, costPerVehicle, activeCount: activeVehicles.length
     };
   };
 
   return {
-    vehicles,
-    entries,
-    globalExpenses,
-    messages,
-    notifications,
-    users,
-    appLogo,
-    currentUser,
-    isCloudSyncing,
-    isDataLoaded,
-    setCurrentUser,
+    vehicles, entries, globalExpenses, messages, notifications, users, cashDesks, appLogo, currentUser,
+    isCloudSyncing, isDataLoaded, setCurrentUser,
     setAppLogo: (logo: string) => { setAppLogoState(logo); setLocal('logo', logo); },
-    addVehicle,
-    updateVehicle,
-    updateVehicleMileage,
-    addEntry,
-    addGlobalExpense,
+    addVehicle, updateVehicle, updateVehicleMileage, addEntry,
     approveMaintenance,
     rejectMaintenance: async (id: string) => {
       setEntries(prev => prev.map(e => e.id === id ? { ...e, status: MaintenanceStatus.REJECTED } : e));
       await supabase.from('entries').update({ status: MaintenanceStatus.REJECTED }).eq('id', id);
     },
-    archiveVehicle,
-    addUser: async (u: User) => { setUsers(prev => [...prev, u]); await supabase.from('users').insert([u]); },
-    deleteUser: async (id: string) => { setUsers(prev => prev.filter(u => u.id !== id)); await supabase.from('users').delete().eq('id', id); },
+    archiveVehicle: async (id: string, salePrice: number) => {
+      setVehicles(prev => prev.map(v => v.id === id ? { ...v, isArchived: true, salePrice } : v));
+      await supabase.from('vehicles').update({ isArchived: true, salePrice }).eq('id', id);
+    },
+    addUser: async (u: User) => {
+      setUsers(prev => [...prev, u]);
+      await supabase.from('users').insert([u]);
+      if (u.role === UserRole.AGENT) {
+        const desk: CashDesk = { id: `cash-${u.id}`, userId: u.id, userName: u.name, balance: 0, createdAt: new Date().toISOString() };
+        setCashDesks(prev => [...prev, desk]);
+        await supabase.from('cash_desks').insert([desk]);
+      }
+    },
+    deleteUser: async (id: string) => {
+      setUsers(prev => prev.filter(u => u.id !== id));
+      await supabase.from('users').delete().eq('id', id);
+      await supabase.from('cash_desks').delete().eq('userId', id);
+    },
     deleteEntry: async (id: string) => {
+      const entry = entries.find(e => e.id === id);
+      if (entry?.cashDeskId) {
+        // Reverse balance change
+        const typeForReverse = entry.type === EntryType.REVENUE || entry.type === EntryType.FUNDING ? EntryType.EXPENSE_SIMPLE : EntryType.REVENUE;
+        await updateCashDeskBalance(entry.cashDeskId, entry.amount, typeForReverse);
+      }
       setEntries(prev => prev.filter(e => e.id !== id));
       await supabase.from('entries').delete().eq('id', id);
     },

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { UserRole } from '../types.ts';
 import {
   LayoutDashboard,
@@ -12,7 +12,11 @@ import {
   LogOut,
   ListOrdered,
   X,
-  Wallet
+  Wallet,
+  MoreVertical,
+  ChevronLeft,
+  ChevronRight,
+  TrendingUp
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -27,11 +31,14 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, role, userName, appLogo, onLogout, onClose, store }) => {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
   const menuItems = [
     { id: 'dashboard', label: 'Tableau de Bord', icon: LayoutDashboard, roles: [UserRole.ADMIN, UserRole.AGENT] },
     { id: 'vehicles', label: 'Gestion Véhicules', icon: Car, roles: [UserRole.ADMIN, UserRole.AGENT] },
     { id: 'entry', label: 'Saisie du Jour', icon: PlusCircle, roles: [UserRole.ADMIN, UserRole.AGENT] },
     { id: 'journal', label: 'Journal de Bord', icon: ListOrdered, roles: [UserRole.ADMIN, UserRole.AGENT] },
+    { id: 'caisse', label: 'Caisse', icon: TrendingUp, roles: [UserRole.ADMIN, UserRole.AGENT] },
     { id: 'maintenance', label: 'Suivi Entretiens', icon: Wrench, roles: [UserRole.ADMIN, UserRole.AGENT] },
     { id: 'validation', label: 'Validations', icon: CheckCircle, roles: [UserRole.ADMIN] },
     { id: 'charges', label: 'Charges Globales', icon: Wallet, roles: [UserRole.ADMIN] },
@@ -41,8 +48,16 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, role, userNa
   ];
 
   return (
-    <aside className="w-64 bg-neutral-950 border-r border-neutral-800 flex flex-col h-screen shrink-0 overflow-hidden">
-      <div className="p-6 shrink-0 relative">
+    <aside className={`${isCollapsed ? 'w-20' : 'w-72'} bg-neutral-950 border-r border-neutral-800 flex flex-col h-screen shrink-0 transition-all duration-300 relative overflow-hidden`}>
+      {/* Toggle Button */}
+      <button
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="absolute top-6 -right-3 z-50 w-6 h-6 bg-neutral-800 border border-neutral-700 rounded-full flex items-center justify-center text-neutral-400 hover:text-white hover:bg-neutral-700 transition-all shadow-xl"
+      >
+        {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+      </button>
+
+      <div className={`${isCollapsed ? 'p-2' : 'p-6'} shrink-0 relative flex flex-col items-center`}>
         {onClose && (
           <button
             onClick={onClose}
@@ -51,22 +66,26 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, role, userNa
             <X className="w-6 h-6" />
           </button>
         )}
-        <div className="w-full aspect-square relative mb-6 rounded-2xl overflow-hidden border border-neutral-800 shadow-xl bg-neutral-950 flex items-center justify-center p-3">
+
+        <div className={`${isCollapsed ? 'w-12 h-12 mb-4 p-2' : 'w-32 h-32 mb-6 p-4'} relative rounded-xl overflow-hidden border border-neutral-800 shadow-2xl bg-neutral-950 flex items-center justify-center transition-all duration-300`}>
           {appLogo ? (
-            <img src="/logo.png" alt="Anistour Logo" className="max-w-full max-h-full object-contain" />
+            <img src="/logo.png" alt="Anistour Logo" className="w-full h-full object-contain" />
           ) : (
-            <div className="text-red-600 font-black text-xs text-center uppercase tracking-tighter">
+            <div className="text-red-600 font-bold text-[8px] sm:text-[10px] text-center uppercase tracking-tighter">
               Anistour<br />Fleet
             </div>
           )}
         </div>
-        <div className="p-3 bg-neutral-900/50 rounded-xl border border-neutral-800">
-          <p className="text-[9px] text-neutral-500 uppercase font-black tracking-widest mb-1">Utilisateur</p>
-          <p className="text-sm font-bold truncate text-neutral-100">{userName}</p>
-        </div>
+
+        {!isCollapsed && (
+          <div className="w-full p-4 bg-neutral-900/50 rounded-[1.5rem] border border-neutral-800 shadow-inner">
+            <p className="text-[8px] text-neutral-600 uppercase font-black tracking-[0.2em] mb-1">Session Active</p>
+            <p className="text-xs font-black truncate text-neutral-100 uppercase tracking-tight">{userName}</p>
+          </div>
+        )}
       </div>
 
-      <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto custom-scrollbar">
+      <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto custom-scrollbar">
         {menuItems.filter(item => item.roles.includes(role)).map(item => {
           const isValidation = item.id === 'validation';
           const isNotif = item.id === 'notifications';
@@ -77,29 +96,38 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, role, userNa
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all group ${activeTab === item.id
-                ? 'bg-red-700 text-white shadow-lg'
-                : 'text-neutral-500 hover:bg-neutral-900 hover:text-neutral-200'
+              title={isCollapsed ? item.label : ''}
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center p-3' : 'justify-between px-5 py-3.5'} rounded-2xl text-[13px] font-black uppercase tracking-widest transition-all group ${activeTab === item.id
+                ? 'bg-red-700 text-white shadow-xl shadow-red-900/30'
+                : 'text-neutral-500 hover:bg-neutral-900/80 hover:text-neutral-200'
                 }`}
             >
               <div className="flex items-center">
-                <item.icon className="w-5 h-5 mr-3 shrink-0" />
-                {item.label}
+                <item.icon className={`shrink-0 ${isCollapsed ? 'w-6 h-6' : 'w-4 h-4 mr-4'} transition-all`} />
+                {!isCollapsed && <span>{item.label}</span>}
               </div>
-              {isValidation && pendingCount > 0 && (
-                <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-black animate-pulse">{pendingCount}</span>
-              )}
-              {isNotif && notifCount > 0 && (
-                <span className="bg-neutral-800 text-neutral-300 text-[10px] px-2 py-0.5 rounded-full font-black border border-neutral-700">{notifCount}</span>
+              {!isCollapsed && (
+                <>
+                  {isValidation && pendingCount > 0 && (
+                    <span className="bg-red-500 text-white text-[9px] px-2 py-0.5 rounded-lg font-black animate-pulse">{pendingCount}</span>
+                  )}
+                  {isNotif && notifCount > 0 && (
+                    <span className="bg-neutral-800 text-neutral-300 text-[9px] px-2 py-0.5 rounded-lg font-black border border-neutral-700">{notifCount}</span>
+                  )}
+                </>
               )}
             </button>
           );
         })}
       </nav>
 
-      <div className="p-4 border-t border-neutral-800 bg-neutral-950">
-        <button onClick={onLogout} className="w-full flex items-center px-4 py-3 text-neutral-500 hover:text-red-500 rounded-xl transition-all text-sm font-bold">
-          <LogOut className="w-5 h-5 mr-3" /> Déconnexion
+      <div className={`${isCollapsed ? 'p-2' : 'p-4'} border-t border-neutral-900 bg-neutral-950`}>
+        <button
+          onClick={onLogout}
+          className={`w-full flex items-center ${isCollapsed ? 'justify-center p-3' : 'px-5 py-3.5'} text-neutral-600 hover:text-red-500 rounded-2xl transition-all text-xs font-black uppercase tracking-widest group`}
+        >
+          <LogOut className={`${isCollapsed ? 'w-6 h-6' : 'w-4 h-4 mr-4'} group-hover:rotate-12 transition-transform`} />
+          {!isCollapsed && 'Déconnexion'}
         </button>
       </div>
     </aside>
