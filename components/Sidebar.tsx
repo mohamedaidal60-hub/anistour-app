@@ -34,7 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, role, userNa
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const menuItems = [
-    { id: 'dashboard', label: 'Tableau de Bord', icon: LayoutDashboard, roles: [UserRole.ADMIN, UserRole.AGENT] },
+    { id: 'dashboard', label: 'Tableau de Bord', icon: LayoutDashboard, roles: [UserRole.ADMIN] },
     { id: 'vehicles', label: 'Gestion Véhicules', icon: Car, roles: [UserRole.ADMIN, UserRole.AGENT] },
     { id: 'entry', label: 'Saisie du Jour', icon: PlusCircle, roles: [UserRole.ADMIN, UserRole.AGENT] },
     { id: 'journal', label: 'Journal de Bord', icon: ListOrdered, roles: [UserRole.ADMIN, UserRole.AGENT] },
@@ -43,6 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, role, userNa
     { id: 'validation', label: 'Validations', icon: CheckCircle, roles: [UserRole.ADMIN] },
     { id: 'charges', label: 'Charges Globales', icon: Wallet, roles: [UserRole.ADMIN] },
     { id: 'notifications', label: 'Alertes', icon: Bell, roles: [UserRole.ADMIN, UserRole.AGENT] },
+    { id: 'alerts_archive', label: 'Archive Alertes', icon: Archive, roles: [UserRole.ADMIN, UserRole.AGENT] },
     { id: 'archives', label: 'Archives Vente', icon: Archive, roles: [UserRole.ADMIN] },
     { id: 'users', label: 'Paramètres', icon: Users, roles: [UserRole.ADMIN] },
   ];

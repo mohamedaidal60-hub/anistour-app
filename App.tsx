@@ -35,6 +35,11 @@ const App: React.FC = () => {
     return <Login onLogin={store.setCurrentUser} users={store.users} appLogo="/logo.png" />;
   }
 
+  // Redirect Agent from Dashboard to Entry if needed
+  if (store.currentUser?.role === UserRole.AGENT && activeTab === 'dashboard') {
+    setActiveTab('entry');
+  }
+
   return (
     <div className="flex h-screen bg-neutral-950 text-neutral-100 overflow-hidden relative">
       {/* Mobile Overlay */}
@@ -79,8 +84,9 @@ const App: React.FC = () => {
                       activeTab === 'caisse' ? 'Caisse Agency' :
                         activeTab === 'maintenance' ? 'Entretiens' :
                           activeTab === 'validation' ? 'Validation' :
-                            activeTab === 'notifications' ? 'Alertes & Notifications' :
-                              activeTab === 'users' ? 'Paramètres' : 'Archives'}
+                            activeTab === 'notifications' ? 'Alertes Actives' :
+                              activeTab === 'alerts_archive' ? 'Archive des Alertes' :
+                                activeTab === 'users' ? 'Paramètres' : 'Archives'}
             </h1>
           </div>
 
@@ -90,7 +96,7 @@ const App: React.FC = () => {
               className={`relative p-2 rounded-xl transition-all ${activeTab === 'notifications' ? 'bg-red-700 text-white' : 'text-neutral-400 hover:text-white hover:bg-neutral-800'}`}
             >
               <Bell className="w-5 h-5" />
-              {store.notifications.length > 0 && (
+              {store.notifications.filter(n => !n.isArchived).length > 0 && (
                 <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-600 rounded-full border-2 border-neutral-950 animate-pulse"></span>
               )}
             </button>
@@ -117,7 +123,8 @@ const App: React.FC = () => {
             {activeTab === 'caisse' && <Caisse store={store} />}
             {activeTab === 'maintenance' && <MaintenanceManager store={store} />}
             {activeTab === 'validation' && (store.currentUser?.role === UserRole.ADMIN ? <AdminValidation store={store} /> : <div className="p-20 text-center text-red-500 font-black">ACCÈS REFUSÉ</div>)}
-            {activeTab === 'notifications' && <NotificationCenter store={store} onClose={() => setActiveTab('dashboard')} />}
+            {activeTab === 'notifications' && <NotificationCenter store={store} onClose={() => setActiveTab('entry')} />}
+            {activeTab === 'alerts_archive' && <NotificationCenter store={store} showArchive onClose={() => setActiveTab('entry')} />}
             {activeTab === 'archives' && <Archives store={store} />}
             {activeTab === 'charges' && (store.currentUser?.role === UserRole.ADMIN ? <GlobalExpenses store={store} /> : <div className="p-20 text-center text-red-500 font-black">ACCÈS REFUSÉ</div>)}
             {activeTab === 'users' && (store.currentUser?.role === UserRole.ADMIN ? <UserManagement store={store} /> : <div className="p-20 text-center text-red-500 font-black">ACCÈS REFUSÉ</div>)}

@@ -97,6 +97,9 @@ export interface Notification {
   createdAt: string;
   isRead: boolean;
   isCritical: boolean;
+  isArchived?: boolean;
+  archivedAt?: string;
+  archivedBy?: string;
 }
 
 export interface GlobalExpense {
@@ -105,4 +108,7 @@ export interface GlobalExpense {
   amount: number;
   date: string;
   description: string;
+  proofPhoto?: string;
+  agentName?: string;
+  cashDeskId?: string;
 }

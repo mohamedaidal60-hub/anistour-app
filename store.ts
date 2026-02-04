@@ -74,6 +74,11 @@ export function useFleetStore() {
         setLocal('cash_desks', cData);
       }
 
+      const { data: nData } = await supabase.from('notifications').select('*').order('createdAt', { ascending: false });
+      if (nData) {
+        setNotifications(nData);
+      }
+
       const { data: uData } = await supabase.from('users').select('*');
       if (uData && uData.length > 0) {
         setUsers(uData);
@@ -97,7 +102,7 @@ export function useFleetStore() {
 
     // Supabase Realtime Subscriptions
     const channels = [
-      'vehicles', 'entries', 'global_expenses', 'messages', 'users', 'cash_desks'
+      'vehicles', 'entries', 'global_expenses', 'messages', 'users', 'cash_desks', 'notifications'
     ].map(table =>
       supabase.channel(`${table}_changes`)
         .on('postgres_changes', { event: '*', schema: 'public', table }, () => fetchData())
@@ -109,31 +114,42 @@ export function useFleetStore() {
     };
   }, [fetchData]);
 
+  // Derived alerts (internal check)
   useEffect(() => {
-    const newNotifs: Notification[] = [];
-    vehicles.forEach(v => {
-      if (v.isArchived) return;
-      v.maintenanceConfigs?.forEach(cfg => {
-        const kmLeft = cfg.nextDueKm - v.lastMileage;
-        if (kmLeft <= 500) {
-          newNotifs.push({
-            id: `notif-${v.id}-${cfg.type}`,
-            vehicleId: v.id,
-            vehicleName: v.name,
-            type: cfg.type,
-            message: kmLeft <= 0
-              ? `URGENT : ${cfg.type} dépassé de ${Math.abs(kmLeft)} KM !`
-              : `Rappel : ${cfg.type} prévu à ${cfg.nextDueKm} KM (dans ${kmLeft} KM)`,
-            targetKm: cfg.nextDueKm,
-            createdAt: new Date().toISOString(),
-            isRead: false,
-            isCritical: kmLeft <= 0
-          });
-        }
+    const checkAlerts = async () => {
+      const newNotifs: Notification[] = [];
+      vehicles.forEach(v => {
+        if (v.isArchived) return;
+        v.maintenanceConfigs?.forEach(cfg => {
+          const kmLeft = cfg.nextDueKm - v.lastMileage;
+          if (kmLeft <= 500) {
+            const notifId = `notif-${v.id}-${cfg.type}-${cfg.nextDueKm}`;
+            const exists = notifications.find(n => n.id === notifId);
+            if (!exists) {
+              newNotifs.push({
+                id: notifId,
+                vehicleId: v.id,
+                vehicleName: v.name,
+                type: cfg.type,
+                message: kmLeft <= 0
+                  ? `URGENT : ${cfg.type} dépassé de ${Math.abs(kmLeft)} KM !`
+                  : `Rappel : ${cfg.type} prévu à ${cfg.nextDueKm} KM (dans ${kmLeft} KM)`,
+                targetKm: cfg.nextDueKm,
+                createdAt: new Date().toISOString(),
+                isRead: false,
+                isCritical: kmLeft <= 0,
+                isArchived: false
+              });
+            }
+          }
+        });
       });
-    });
-    setNotifications(newNotifs);
-  }, [vehicles]);
+      if (newNotifs.length > 0) {
+        await supabase.from('notifications').insert(newNotifs);
+      }
+    };
+    checkAlerts();
+  }, [vehicles, notifications]);
 
   const updateCashDeskBalance = async (deskId: string, amount: number, type: EntryType) => {
     const desk = cashDesks.find(d => d.id === deskId);
@@ -214,9 +230,26 @@ export function useFleetStore() {
         return cfg;
       });
       await updateVehicle({ ...vehicle, maintenanceConfigs: newConfigs });
+
+      // Auto-archive corresponding notification
+      const notifId = `notif-${vehicle.id}-${entry.maintenanceType}-${entry.mileageAtEntry}`; // Attempting to match
+      const relatedNotif = notifications.find(n => n.vehicleId === vehicle.id && n.type === entry.maintenanceType && !n.isArchived);
+      if (relatedNotif) {
+        await archiveNotification(relatedNotif.id, 'Système (Auto-Approval)');
+      }
+
       setEntries(prev => prev.map(e => e.id === entryId ? { ...e, status: MaintenanceStatus.APPROVED } : e));
       await supabase.from('entries').update({ status: MaintenanceStatus.APPROVED }).eq('id', entryId);
     }
+  };
+
+  const archiveNotification = async (notifId: string, author: string) => {
+    setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, isArchived: true, archivedAt: new Date().toISOString(), archivedBy: author } : n));
+    await supabase.from('notifications').update({
+      isArchived: true,
+      archivedAt: new Date().toISOString(),
+      archivedBy: author
+    }).eq('id', notifId);
   };
 
   const getFinancialStats = () => {
@@ -252,7 +285,7 @@ export function useFleetStore() {
     isCloudSyncing, isDataLoaded, setCurrentUser,
     setAppLogo: (logo: string) => { setAppLogoState(logo); setLocal('logo', logo); },
     addVehicle, updateVehicle, updateVehicleMileage, addEntry, addGlobalExpense,
-    approveMaintenance,
+    approveMaintenance, archiveNotification,
     rejectMaintenance: async (id: string) => {
       setEntries(prev => prev.map(e => e.id === id ? { ...e, status: MaintenanceStatus.REJECTED } : e));
       await supabase.from('entries').update({ status: MaintenanceStatus.REJECTED }).eq('id', id);
@@ -264,16 +297,20 @@ export function useFleetStore() {
     addUser: async (u: User) => {
       setUsers(prev => [...prev, u]);
       await supabase.from('users').insert([u]);
-      if (u.role === UserRole.AGENT || (u.role as string) === 'ASSISTANT') {
-        const desk: CashDesk = {
-          id: `cash-${u.id}`,
-          userId: u.id,
-          userName: u.name,
-          balance: 0,
-          createdAt: new Date().toISOString()
-        };
-        setCashDesks(prev => [...prev, desk]);
-        await supabase.from('cash_desks').insert([desk]);
+      if (u.role === UserRole.ADMIN || (u.role as string) === 'ADMIN' || u.role === UserRole.AGENT || (u.role as string) === 'ASSISTANT') {
+        const deskId = `cash-${u.id}`;
+        const existingDesk = cashDesks.find(d => d.id === deskId);
+        if (!existingDesk) {
+          const desk: CashDesk = {
+            id: deskId,
+            userId: u.id,
+            userName: u.name,
+            balance: 0,
+            createdAt: new Date().toISOString()
+          };
+          setCashDesks(prev => [...prev, desk]);
+          await supabase.from('cash_desks').insert([desk]);
+        }
       }
     },
     deleteUser: async (id: string) => {
@@ -291,8 +328,14 @@ export function useFleetStore() {
       await supabase.from('entries').delete().eq('id', id);
     },
     updateEntry: async (entry: FinancialEntry) => {
-      setEntries(prev => prev.map(e => e.id === entry.id ? entry : e));
-      await supabase.from('entries').update(entry).eq('id', entry.id);
+      // If agent edits, we might want to unset status back to PENDING if it was rejected
+      const newEntry = { ...entry, status: currentUser?.role === UserRole.ADMIN ? entry.status : MaintenanceStatus.PENDING };
+      setEntries(prev => prev.map(e => e.id === newEntry.id ? newEntry : e));
+      await supabase.from('entries').update(newEntry).eq('id', newEntry.id);
+    },
+    markNotificationRead: async (id: string) => {
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+      await supabase.from('notifications').update({ isRead: true }).eq('id', id);
     },
     getFinancialStats,
     resetPassword: async (uid: string, pass: string) => {

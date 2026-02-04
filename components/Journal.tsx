@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { useFleetStore } from '../store.ts';
-import { EntryType, MaintenanceStatus, UserRole } from '../types.ts';
-import { ArrowUpRight, ArrowDownLeft, Wrench, Search, ShieldAlert, User as UserIcon, Coins } from 'lucide-react';
+import { EntryType, MaintenanceStatus, UserRole, FinancialEntry } from '../types.ts';
+import { ArrowUpRight, ArrowDownLeft, Wrench, Search, ShieldAlert, User as UserIcon, Coins, Edit3, Check, X } from 'lucide-react';
 import { CURRENCY } from '../constants.ts';
 
 interface JournalProps {
@@ -12,6 +12,8 @@ interface JournalProps {
 const Journal: React.FC<JournalProps> = ({ store }) => {
   const isAgent = store.currentUser?.role === UserRole.AGENT;
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState<Partial<FinancialEntry>>({});
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -30,6 +32,20 @@ const Journal: React.FC<JournalProps> = ({ store }) => {
   });
 
   const sortedEntries = [...filteredEntries].sort((a, b) => b.date.localeCompare(a.date));
+
+  const startEdit = (entry: FinancialEntry) => {
+    setEditingId(entry.id);
+    setEditValue({ ...entry });
+  };
+
+  const saveEdit = async () => {
+    if (editingId && editValue) {
+      // Force status to PENDING for re-validation
+      const updatedEntry = { ...editValue, status: MaintenanceStatus.PENDING } as FinancialEntry;
+      await store.updateEntry(updatedEntry);
+      setEditingId(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -60,7 +76,7 @@ const Journal: React.FC<JournalProps> = ({ store }) => {
             <ShieldAlert className="w-6 h-6 text-amber-500" />
           </div>
           <p className="text-[11px] text-amber-200/80 font-black uppercase tracking-[0.2em] leading-relaxed">
-            Mode Assistante : Accès restreint aux saisies du jour. L'historique des jours précédents est masqué par mesure de sécurité.
+            Note Agent : Vous pouvez modifier vos saisies du jour. Toute modification nécessitera une nouvelle validation de l'administrateur.
           </p>
         </div>
       )}
@@ -75,13 +91,14 @@ const Journal: React.FC<JournalProps> = ({ store }) => {
                 <th className="px-8 py-7">Opération & Détails</th>
                 <th className="px-8 py-7">Gestionnaire</th>
                 <th className="px-8 py-7">Statut</th>
-                <th className="px-8 py-7 text-right">Montant</th>
+                <th className="px-8 py-7 text-right">Actions / Montant</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-800/50">
               {sortedEntries.map(entry => {
                 const isRevenue = entry.type === EntryType.REVENUE || entry.type === EntryType.FUNDING;
                 const vehicle = store.vehicles.find(v => v.id === entry.vehicleId);
+                const isEditing = editingId === entry.id;
 
                 return (
                   <tr key={entry.id} className="group hover:bg-neutral-800/40 transition-all duration-300">
@@ -91,7 +108,18 @@ const Journal: React.FC<JournalProps> = ({ store }) => {
                     </td>
                     <td className="px-8 py-6">
                       <span className="font-black text-neutral-100 uppercase tracking-tighter text-sm group-hover:text-red-500 transition-colors">{vehicle?.name || 'Général / Agence'}</span>
-                      {vehicle && <span className="block text-[9px] text-neutral-500 font-black uppercase mt-1 tracking-widest">Index : {(entry.mileageAtEntry ?? 0).toLocaleString()} KM</span>}
+                      {vehicle && (
+                        isEditing ? (
+                          <input
+                            type="number"
+                            className="bg-neutral-950 border border-neutral-700 text-[10px] font-black text-neutral-300 p-1 w-24 rounded mt-1"
+                            value={editValue.mileageAtEntry}
+                            onChange={(e) => setEditValue({ ...editValue, mileageAtEntry: Number(e.target.value) })}
+                          />
+                        ) : (
+                          <span className="block text-[9px] text-neutral-500 font-black uppercase mt-1 tracking-widest">Index : {(entry.mileageAtEntry ?? 0).toLocaleString()} KM</span>
+                        )
+                      )}
                     </td>
                     <td className="px-8 py-6">
                       <div className="flex items-center gap-4">
@@ -101,9 +129,14 @@ const Journal: React.FC<JournalProps> = ({ store }) => {
                               (entry.type === EntryType.EXPENSE_MAINTENANCE ? <Wrench className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />)}
                         </div>
                         <div className="min-w-0">
-                          <span className="text-neutral-200 font-black text-xs uppercase tracking-tight block">{entry.description || entry.designation}</span>
-                          {entry.cashDeskId && (
-                            <span className="text-[8px] bg-neutral-950 text-neutral-500 px-2 py-0.5 rounded border border-neutral-800 font-black uppercase mt-1 inline-block">Caisse Agent</span>
+                          {isEditing ? (
+                            <input
+                              className="bg-neutral-950 border border-neutral-700 text-xs font-black text-neutral-300 p-1 w-full rounded"
+                              value={editValue.description || editValue.designation}
+                              onChange={(e) => setEditValue({ ...editValue, description: e.target.value })}
+                            />
+                          ) : (
+                            <span className="text-neutral-200 font-black text-xs uppercase tracking-tight block">{entry.description || entry.designation}</span>
                           )}
                         </div>
                       </div>
@@ -124,8 +157,36 @@ const Journal: React.FC<JournalProps> = ({ store }) => {
                         </span>
                       </div>
                     </td>
-                    <td className={`px-8 py-6 text-right font-black text-base whitespace-nowrap ${isRevenue ? 'text-emerald-500' : 'text-white'}`}>
-                      {isRevenue ? '+' : '-'}{(entry.amount ?? 0).toLocaleString()} <span className="text-[10px] text-neutral-600">{CURRENCY}</span>
+                    <td className="px-8 py-6 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-4">
+                        {isEditing ? (
+                          <div className="flex gap-2">
+                            <input
+                              type="number"
+                              className="bg-neutral-950 border border-emerald-900 text-emerald-500 font-black text-right p-1 w-24 rounded"
+                              value={editValue.amount}
+                              onChange={(e) => setEditValue({ ...editValue, amount: Number(e.target.value) })}
+                            />
+                            <button onClick={saveEdit} className="p-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors"><Check className="w-4 h-4" /></button>
+                            <button onClick={() => setEditingId(null)} className="p-1.5 bg-neutral-800 text-white rounded-lg hover:bg-neutral-700 transition-colors"><X className="w-4 h-4" /></button>
+                          </div>
+                        ) : (
+                          <>
+                            {isAgent && (
+                              <button
+                                onClick={() => startEdit(entry)}
+                                className="p-2 opacity-0 group-hover:opacity-100 hover:bg-neutral-700 rounded-lg transition-all text-neutral-500 hover:text-white"
+                                title="Modifier"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </button>
+                            )}
+                            <p className={`font-black text-base ${isRevenue ? 'text-emerald-500' : 'text-white'}`}>
+                              {isRevenue ? '+' : '-'}{(entry.amount ?? 0).toLocaleString()} <span className="text-[10px] text-neutral-600">{CURRENCY}</span>
+                            </p>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
