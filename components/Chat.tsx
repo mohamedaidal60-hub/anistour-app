@@ -2,11 +2,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Message, UserRole, User } from '../types.ts';
 import { useFleetStore } from '../store.ts';
-import { Send, MessageSquare, X, User as UserIcon, Shield, ChevronLeft, Search, Filter } from 'lucide-react';
+import { Send, MessageSquare, X, User as UserIcon, Shield, ChevronLeft, Search, Filter, Megaphone } from 'lucide-react';
 
 interface ChatProps {
     store: ReturnType<typeof useFleetStore>;
 }
+
+const BROADCAST_ID = 'BROADCAST_ALL';
 
 const Chat: React.FC<ChatProps> = ({ store }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -19,39 +21,16 @@ const Chat: React.FC<ChatProps> = ({ store }) => {
     const currentUser = store.currentUser;
     if (!currentUser) return null;
 
-    const isAdmin = currentUser.role === UserRole.ADMIN || (currentUser.role as string).toUpperCase() === 'ADMIN' || (currentUser.role as string).toUpperCase() === 'ADMINISTRATEUR';
+    const isAdmin = currentUser.role === UserRole.ADMIN || (currentUser.role as string).toUpperCase() === 'ADMIN';
 
-    // List of users to talk to
+    // Get the primary admin for agents to talk to (fallback to first found admin)
+    const primaryAdmin = store.users.find(u => u.role === UserRole.ADMIN) || { id: 'admin_1', name: 'Admin' };
+
+    // List of agents for the admin to select
     const agents = store.users.filter(u => {
         if (u.id === currentUser.id) return false;
-        const r = (u.role as string).toUpperCase();
-        return r === 'AGENT' || r === 'ASSISTANT' || r === 'ASSISTANTE' || r === 'SERVICE' || r === UserRole.AGENT;
+        return (u.role as string).toUpperCase() === 'ASSISTANT' || u.role === UserRole.AGENT;
     });
-
-    const administrators = store.users.filter(u => {
-        if (u.id === currentUser.id) return false;
-        const r = (u.role as string).toUpperCase();
-        return r === 'ADMIN' || r === 'ADMINISTRATEUR' || r === UserRole.ADMIN;
-    });
-
-    const allRecipients = isAdmin ? agents : administrators;
-    const filteredRecipients = allRecipients.filter(u =>
-        (u.name || 'Agent').toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    // Initial view logic
-    useEffect(() => {
-        if (isOpen) {
-            if (isAdmin) {
-                // Admins see the user list by default
-                setShowList(true);
-            } else {
-                // Agents talk to Admins by default
-                setSelectedRecipientId('broadcast_admins');
-                setShowList(false);
-            }
-        }
-    }, [isOpen, isAdmin]);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -59,12 +38,25 @@ const Chat: React.FC<ChatProps> = ({ store }) => {
         }
     }, [store.messages, isOpen, selectedRecipientId, showList]);
 
+    // Initial setup when opening chat
+    useEffect(() => {
+        if (isOpen) {
+            if (isAdmin) {
+                setShowList(true);
+            } else {
+                // Agents are locked to Admin conversation or Broadcast
+                setSelectedRecipientId(primaryAdmin.id);
+                setShowList(false);
+            }
+        }
+    }, [isOpen, isAdmin]);
+
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!text.trim() || !selectedRecipientId) return;
 
         const msg: Message = {
-            id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
+            id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
             senderId: currentUser.id,
             senderName: currentUser.name,
             senderRole: currentUser.role,
@@ -77,134 +69,165 @@ const Chat: React.FC<ChatProps> = ({ store }) => {
         setText('');
     };
 
+    // FILTER MESSAGES: Critical part for security
     const filteredMessages = store.messages.filter(m => {
-        if (selectedRecipientId === 'broadcast_agents' || selectedRecipientId === 'broadcast_admins') {
-            // Global thread
-            return m.receiverId === 'broadcast_agents' || m.receiverId === 'broadcast_admins';
+        // 1. Broadcast messages are visible to everyone
+        if (selectedRecipientId === BROADCAST_ID) {
+            return m.receiverId === BROADCAST_ID;
         }
-        // Private conversation
-        const isMeSender = m.senderId === currentUser.id && m.receiverId === selectedRecipientId;
-        const isMeReceiver = m.senderId === selectedRecipientId && m.receiverId === currentUser.id;
-        return isMeSender || isMeReceiver;
+
+        // Get sender and receiver roles for complex filtering
+        const sender = store.users.find(u => u.id === m.senderId);
+        const receiver = store.users.find(u => u.id === m.receiverId);
+        const isSenderAdmin = sender?.role === UserRole.ADMIN || (sender?.role as string) === 'ADMIN';
+        const isReceiverAdmin = receiver?.role === UserRole.ADMIN || (receiver?.role as string) === 'ADMIN';
+
+        if (isAdmin) {
+            // Admin is looking at a specific agent (selectedRecipientId)
+            // They should see all messages between ANY admin and this specific agent
+            const betweenSelectedAndAdmin = (m.senderId === selectedRecipientId && isReceiverAdmin) ||
+                (isSenderAdmin && m.receiverId === selectedRecipientId);
+            return betweenSelectedAndAdmin;
+        } else {
+            // Agent is looking at their chat with Admin
+            // They see messages between THEMSELVES and ANY admin
+            const betweenMeAndAdmin = (m.senderId === currentUser.id && isReceiverAdmin) ||
+                (isSenderAdmin && m.receiverId === currentUser.id);
+            return betweenMeAndAdmin;
+        }
     });
 
-    const currentRecipientName = selectedRecipientId === 'broadcast_agents' ? 'Diffusion Globale' :
-        selectedRecipientId === 'broadcast_admins' ? 'Support Administration' :
-            store.users.find(u => u.id === selectedRecipientId)?.name || 'Discussion';
+    const currentChatName = selectedRecipientId === BROADCAST_ID
+        ? 'Diffusion Globale'
+        : (store.users.find(u => u.id === selectedRecipientId)?.name || 'Canal Direction');
 
     return (
         <div className="fixed bottom-6 right-6 z-[100]">
             {!isOpen && (
                 <button
                     onClick={() => setIsOpen(true)}
-                    className="w-14 h-14 bg-red-700 text-white rounded-full flex items-center justify-center shadow-2xl hover:scale-110 transition-all active:scale-95 border-4 border-neutral-900 group relative"
+                    className="w-16 h-16 bg-red-700 text-white rounded-[2rem] flex items-center justify-center shadow-2xl hover:scale-105 transition-all active:scale-95 border-4 border-neutral-900 group relative"
                 >
-                    <MessageSquare className="w-6 h-6 group-hover:rotate-12 transition-transform" />
-                    {store.messages.length > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-neutral-900 animate-pulse"></span>}
+                    <MessageSquare className="w-7 h-7" />
+                    {store.messages.length > 0 && (
+                        <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full border-4 border-neutral-900 flex items-center justify-center text-[10px] font-black">!</span>
+                    )}
                 </button>
             )}
 
             {isOpen && (
-                <div className="bg-neutral-900 border border-neutral-800 w-[380px] h-[550px] rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
+                <div className="bg-neutral-900 border border-neutral-800 w-[400px] h-[600px] rounded-[3rem] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                     {/* Header */}
-                    <div className="p-5 bg-neutral-950 border-b border-neutral-800 flex justify-between items-center shrink-0">
-                        <div className="flex items-center gap-3">
+                    <div className="p-6 bg-neutral-950 border-b border-neutral-800 flex justify-between items-center shrink-0">
+                        <div className="flex items-center gap-4">
                             {(!showList && isAdmin) && (
-                                <button onClick={() => setShowList(true)} className="p-2 hover:bg-neutral-800 rounded-xl text-neutral-400">
+                                <button onClick={() => setShowList(true)} className="w-10 h-10 flex items-center justify-center bg-neutral-900 hover:bg-neutral-800 rounded-2xl text-neutral-400 transition-all">
                                     <ChevronLeft className="w-5 h-5" />
                                 </button>
                             )}
                             <div>
-                                <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-neutral-100">{showList ? 'Contacts Anistour' : currentRecipientName}</h3>
-                                <p className="text-[9px] text-neutral-500 font-bold uppercase tracking-wider">{showList ? 'Sélectionner un destinataire' : 'Ligne Directe Cloud'}</p>
+                                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white">
+                                    {showList ? 'Communication Cloud' : currentChatName}
+                                </h3>
+                                <p className="text-[9px] text-neutral-500 font-bold uppercase mt-0.5">
+                                    {showList ? 'Sélectionner un canal' : 'Liaison Sécurisée & Cryptée'}
+                                </p>
                             </div>
                         </div>
-                        <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-neutral-800 rounded-xl text-neutral-500 hover:text-white transition-colors">
+                        <button onClick={() => setIsOpen(false)} className="w-10 h-10 flex items-center justify-center hover:bg-red-900/20 rounded-2xl text-neutral-500 hover:text-red-500 transition-all">
                             <X className="w-5 h-5" />
                         </button>
                     </div>
 
                     {showList && isAdmin ? (
-                        /* ADMIN LIST VIEW */
-                        <div className="flex-1 flex flex-col overflow-hidden bg-neutral-950/20">
-                            <div className="p-4 border-b border-neutral-800/50">
+                        /* ADMIN DIRECTORY */
+                        <div className="flex-1 overflow-hidden flex flex-col">
+                            <div className="p-6 border-b border-neutral-800">
                                 <div className="relative">
                                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" />
                                     <input
-                                        type="text"
-                                        placeholder="Filtrer les agents..."
-                                        className="w-full bg-neutral-900 border border-neutral-800 rounded-2xl py-3 pl-11 pr-4 text-xs outline-none focus:border-red-700 font-medium"
+                                        className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl py-3.5 pl-12 pr-4 text-xs font-bold outline-none focus:border-red-700 transition-all"
+                                        placeholder="Rechercher un agent..."
                                         value={searchQuery}
                                         onChange={e => setSearchQuery(e.target.value)}
                                     />
                                 </div>
                             </div>
-
-                            <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
                                 {/* Broadcast Option */}
                                 <button
-                                    onClick={() => { setSelectedRecipientId('broadcast_agents'); setShowList(false); }}
-                                    className="w-full p-4 rounded-2xl flex items-center gap-4 transition-all bg-red-950/20 border border-red-900/20 hover:bg-red-900/30 group"
+                                    onClick={() => { setSelectedRecipientId(BROADCAST_ID); setShowList(false); }}
+                                    className="w-full p-5 rounded-[2rem] bg-red-700/10 border border-red-900/20 hover:bg-red-700/20 flex items-center gap-5 transition-all group"
                                 >
-                                    <div className="p-3 rounded-xl bg-red-700 text-white shadow-lg shadow-red-900/40">
-                                        <Filter className="w-5 h-5" />
+                                    <div className="w-14 h-14 bg-red-700 rounded-2xl flex items-center justify-center shadow-xl shadow-red-900/20">
+                                        <Megaphone className="w-6 h-6 text-white" />
                                     </div>
                                     <div className="text-left">
-                                        <p className="text-xs font-black uppercase tracking-widest text-red-500">CANAL GÉNÉRAL</p>
-                                        <p className="text-[9px] text-neutral-500 font-bold">Visible par toute l'équipe</p>
+                                        <p className="text-xs font-black text-red-500 uppercase tracking-widest">Diffusion Globale</p>
+                                        <p className="text-[9px] text-neutral-500 font-bold uppercase mt-1">Notifier toute l'équipe</p>
                                     </div>
                                 </button>
 
-                                <div className="px-3 pt-6 pb-2 text-[9px] font-black uppercase tracking-[0.2em] text-neutral-600">Agents & Collaborateurs</div>
+                                <div className="p-4 text-[9px] font-black text-neutral-600 uppercase tracking-[0.3em]">Canaux Individuels</div>
 
-                                {filteredRecipients.length === 0 && (
-                                    <div className="py-10 text-center opacity-40 italic text-xs">Aucun agent disponible</div>
-                                )}
-
-                                {filteredRecipients.map(u => (
+                                {agents.filter(a => a.name.toLowerCase().includes(searchQuery.toLowerCase())).map(u => (
                                     <button
                                         key={u.id}
                                         onClick={() => { setSelectedRecipientId(u.id); setShowList(false); }}
-                                        className="w-full p-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-neutral-800/50 border border-transparent hover:border-neutral-800 group"
+                                        className="w-full p-5 rounded-[2rem] bg-neutral-950/40 border border-transparent hover:border-neutral-800 hover:bg-neutral-950 flex items-center gap-5 transition-all group"
                                     >
-                                        <div className="w-12 h-12 bg-neutral-950 border border-neutral-800 rounded-full flex items-center justify-center font-black text-sm text-neutral-500 group-hover:border-red-600/50 transition-colors">
-                                            {(u.name || 'A').substring(0, 2).toUpperCase()}
+                                        <div className="w-14 h-14 bg-neutral-900 rounded-full border border-neutral-800 flex items-center justify-center font-black text-neutral-500 group-hover:border-red-700 transition-all">
+                                            {u.name.substring(0, 2).toUpperCase()}
                                         </div>
-                                        <div className="text-left flex-1">
-                                            <p className="text-sm font-bold text-neutral-100">{u.name || 'Agent'}</p>
-                                            <p className="text-[9px] text-neutral-500 font-black uppercase">{u.role}</p>
+                                        <div className="text-left">
+                                            <p className="text-sm font-black text-white uppercase tracking-tight">{u.name}</p>
+                                            <p className="text-[9px] text-neutral-600 font-bold uppercase">{u.role}</p>
                                         </div>
-                                        <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full shadow-lg shadow-emerald-900/40"></div>
                                     </button>
                                 ))}
                             </div>
                         </div>
                     ) : (
-                        /* MESSAGES VIEW */
+                        /* MESSAGES INTERFACE */
                         <>
-                            <div ref={scrollRef} className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar bg-neutral-900/30">
+                            <div className="p-3 bg-neutral-950/50 flex gap-2 overflow-x-auto border-b border-neutral-800 shrink-0">
+                                <button
+                                    onClick={() => setSelectedRecipientId(BROADCAST_ID)}
+                                    className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${selectedRecipientId === BROADCAST_ID ? 'bg-red-700 text-white shadow-lg shadow-red-900/20' : 'bg-neutral-900 text-neutral-500 hover:text-white'}`}
+                                >
+                                    <Megaphone className="w-3 h-3 inline mr-2" /> Diffusion
+                                </button>
+                                {!isAdmin && (
+                                    <button
+                                        selected-attr={selectedRecipientId === primaryAdmin.id ? 'true' : 'false'}
+                                        onClick={() => setSelectedRecipientId(primaryAdmin.id)}
+                                        className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${selectedRecipientId === primaryAdmin.id ? 'bg-red-700 text-white shadow-lg shadow-red-900/20' : 'bg-neutral-900 text-neutral-500 hover:text-white'}`}
+                                    >
+                                        Direction
+                                    </button>
+                                )}
+                            </div>
+
+                            <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-neutral-950/20">
                                 {filteredMessages.length === 0 && (
-                                    <div className="h-full flex flex-col items-center justify-center text-center p-10">
-                                        <div className="w-16 h-16 bg-neutral-950 rounded-full flex items-center justify-center mb-6 border border-neutral-800">
-                                            <MessageSquare className="w-8 h-8 text-neutral-700" />
-                                        </div>
-                                        <p className="text-[10px] text-neutral-600 font-black uppercase tracking-widest leading-loose">Début de la liaison cryptée<br />Aucun message pour le moment</p>
+                                    <div className="h-full flex flex-col items-center justify-center text-center opacity-20">
+                                        <Shield className="w-12 h-12 mb-4" />
+                                        <p className="text-[10px] font-black uppercase tracking-[0.2em]">Aucun échange archivé</p>
                                     </div>
                                 )}
                                 {filteredMessages.map((m, idx) => {
                                     const isMe = m.senderId === currentUser.id;
                                     return (
-                                        <div key={m.id || idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                                            <div className={`max-w-[85%] p-4 rounded-3xl relative shadow-xl ${isMe ? 'bg-red-700 text-white rounded-tr-none' : 'bg-neutral-800 text-neutral-200 rounded-tl-none border border-neutral-700'}`}>
+                                        <div key={m.id || idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2`}>
+                                            <div className={`max-w-[85%] p-5 rounded-[1.8rem] relative shadow-2xl ${isMe ? 'bg-red-700 text-white rounded-tr-none' : 'bg-neutral-800 text-neutral-200 rounded-tl-none border border-neutral-700/50'}`}>
                                                 {!isMe && (
                                                     <div className="flex items-center gap-2 mb-2 opacity-50">
-                                                        <span className="text-[9px] font-black uppercase tracking-wider">{m.senderName}</span>
-                                                        {m.senderRole === UserRole.ADMIN ? <Shield className="w-2.5 h-2.5" /> : <UserIcon className="w-2.5 h-2.5" />}
+                                                        <span className="text-[9px] font-black uppercase text-red-500">{m.senderName}</span>
                                                     </div>
                                                 )}
-                                                <p className="text-xs leading-relaxed font-medium whitespace-pre-wrap">{m.text}</p>
-                                                <div className="flex justify-end mt-2">
-                                                    <span className="text-[8px] opacity-40 font-black tracking-widest">{new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                <p className="text-[13px] leading-relaxed font-bold break-words">{m.text}</p>
+                                                <div className="mt-3 flex justify-end">
+                                                    <span className="text-[8px] font-black uppercase tracking-tighter opacity-30">{new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -212,20 +235,27 @@ const Chat: React.FC<ChatProps> = ({ store }) => {
                                 })}
                             </div>
 
-                            <form onSubmit={handleSendMessage} className="p-5 bg-neutral-950 border-t border-neutral-800 flex gap-3 shrink-0">
-                                <input
-                                    type="text"
-                                    value={text}
-                                    onChange={(e) => setText(e.target.value)}
-                                    placeholder="Écrivez ici..."
-                                    className="flex-1 bg-neutral-900 border border-neutral-800 p-4 rounded-2xl text-xs focus:outline-none focus:border-red-700 text-neutral-200 transition-all font-bold placeholder:text-neutral-700"
-                                />
-                                <button
-                                    disabled={!text.trim() || !selectedRecipientId}
-                                    className="p-4 bg-red-700 text-white rounded-2xl hover:bg-red-600 disabled:opacity-30 transition-all active:scale-95 shadow-xl shadow-red-900/30"
-                                >
-                                    <Send className="w-5 h-5" />
-                                </button>
+                            <form onSubmit={handleSendMessage} className="p-6 bg-neutral-950 border-t border-neutral-800 flex gap-3 shrink-0">
+                                {(!isAdmin && selectedRecipientId === BROADCAST_ID) ? (
+                                    <div className="flex-1 bg-neutral-900/50 border border-neutral-800/50 rounded-2xl px-5 py-4 text-[10px] font-black uppercase tracking-widest text-neutral-600 text-center">
+                                        Lecture seule : Canal d'information Admin
+                                    </div>
+                                ) : (
+                                    <>
+                                        <input
+                                            className="flex-1 bg-neutral-900 border border-neutral-800 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-red-700 transition-all placeholder:text-neutral-700 text-white"
+                                            placeholder={selectedRecipientId === BROADCAST_ID ? "Annonce générale..." : "Votre message..."}
+                                            value={text}
+                                            onChange={e => setText(e.target.value)}
+                                        />
+                                        <button
+                                            disabled={!text.trim()}
+                                            className="w-14 h-14 bg-red-700 hover:bg-red-600 disabled:opacity-20 text-white rounded-2xl flex items-center justify-center shadow-xl shadow-red-900/30 transition-all active:scale-90"
+                                        >
+                                            <Send className="w-5 h-5" />
+                                        </button>
+                                    </>
+                                )}
                             </form>
                         </>
                     )}
