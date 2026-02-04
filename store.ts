@@ -26,7 +26,7 @@ export function useFleetStore() {
   const [vehicles, setVehicles] = useState<Vehicle[]>(() => getLocal('vehicles', []));
   const [entries, setEntries] = useState<FinancialEntry[]>(() => getLocal('entries', []));
   const [globalExpenses, setGlobalExpenses] = useState<GlobalExpense[]>(() => getLocal('global_expenses', []));
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => getLocal('messages', []));
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [users, setUsers] = useState<User[]>(() => getLocal('users', []));
   const [cashDesks, setCashDesks] = useState<CashDesk[]>(() => getLocal('cash_desks', []));
@@ -65,6 +65,7 @@ export function useFleetStore() {
       const { data: mData } = await supabase.from('messages').select('*').order('timestamp', { ascending: true });
       if (mData) {
         setMessages(mData);
+        setLocal('messages', mData);
       }
 
       const { data: cData } = await supabase.from('cash_desks').select('*');
