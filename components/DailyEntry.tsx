@@ -121,7 +121,7 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
             {myCaisse && (
               <div className="flex items-center gap-3 bg-red-950/20 px-4 py-2.5 rounded-2xl border border-red-900/30">
                 <Wallet className="w-4 h-4 text-red-500" />
-                <span className="text-[10px] font-black text-white uppercase tracking-widest">{myCaisse.balance.toLocaleString()} {CURRENCY}</span>
+                <span className="text-[10px] font-black text-white uppercase tracking-widest">{(myCaisse.balance ?? 0).toLocaleString()} {CURRENCY}</span>
               </div>
             )}
           </div>

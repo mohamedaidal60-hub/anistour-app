@@ -87,7 +87,7 @@ const Caisse: React.FC<CaisseProps> = ({ store }) => {
                             </div>
                             <p className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.3em] mb-4">Solde Actuel - {selectedDesk.userName}</p>
                             <h3 className="text-6xl font-black text-white tracking-tighter">
-                                {selectedDesk.balance.toLocaleString()} <span className="text-2xl text-red-600 ml-1">{CURRENCY}</span>
+                                {(selectedDesk.balance ?? 0).toLocaleString()} <span className="text-2xl text-red-600 ml-1">{CURRENCY}</span>
                             </h3>
 
                             <div className="mt-10 pt-10 border-t border-neutral-900 flex gap-4">
@@ -107,13 +107,13 @@ const Caisse: React.FC<CaisseProps> = ({ store }) => {
                             <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-[2rem] shadow-xl">
                                 <p className="text-[8px] font-black text-neutral-500 uppercase tracking-widest mb-1">Revenus</p>
                                 <p className="text-xl font-black text-emerald-500">
-                                    {deskEntries.filter(e => e.type === EntryType.REVENUE).reduce((sum, e) => sum + e.amount, 0).toLocaleString()}
+                                    {deskEntries.filter(e => e.type === EntryType.REVENUE).reduce((sum, e) => sum + (e.amount ?? 0), 0).toLocaleString()}
                                 </p>
                             </div>
                             <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-[2rem] shadow-xl">
                                 <p className="text-[8px] font-black text-neutral-500 uppercase tracking-widest mb-1">Dépenses</p>
                                 <p className="text-xl font-black text-white">
-                                    {deskEntries.filter(e => e.type !== EntryType.REVENUE && e.type !== EntryType.FUNDING).reduce((sum, e) => sum + e.amount, 0).toLocaleString()}
+                                    {deskEntries.filter(e => e.type !== EntryType.REVENUE && e.type !== EntryType.FUNDING).reduce((sum, e) => sum + (e.amount ?? 0), 0).toLocaleString()}
                                 </p>
                             </div>
                         </div>
@@ -154,7 +154,7 @@ const Caisse: React.FC<CaisseProps> = ({ store }) => {
                                             </div>
                                             <div className="text-right">
                                                 <p className={`text-xl font-black ${isPositive ? 'text-emerald-500' : 'text-neutral-100'}`}>
-                                                    {isPositive ? '+' : '-'}{entry.amount.toLocaleString()} <span className="text-[10px] text-neutral-600 uppercase ml-1">{CURRENCY}</span>
+                                                    {isPositive ? '+' : '-'}{(entry.amount ?? 0).toLocaleString()} <span className="text-[10px] text-neutral-600 uppercase ml-1">{CURRENCY}</span>
                                                 </p>
                                             </div>
                                         </div>

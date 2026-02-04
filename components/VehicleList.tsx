@@ -575,11 +575,11 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                         <div className="grid grid-cols-2 gap-4 mb-6">
                           <div>
                             <p className="text-[8px] text-neutral-600 uppercase font-black">Intervalle</p>
-                            <p className="text-xs font-black text-neutral-200">{cfg.intervalKm.toLocaleString()} KM</p>
+                            <p className="text-xs font-black text-neutral-200">{(cfg.intervalKm ?? 0).toLocaleString()} KM</p>
                           </div>
                           <div>
                             <p className="text-[8px] text-neutral-600 uppercase font-black">Prochain</p>
-                            <p className={`text-xs font-black ${isUrgent ? 'text-red-500' : 'text-neutral-200'}`}>{cfg.nextDueKm.toLocaleString()} KM</p>
+                            <p className={`text-xs font-black ${isUrgent ? 'text-red-500' : 'text-neutral-200'}`}>{(cfg.nextDueKm ?? 0).toLocaleString()} KM</p>
                           </div>
                         </div>
                         <div className="space-y-2">
@@ -587,7 +587,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                             <span className={`text-[9px] font-black uppercase ${remaining < 0 ? 'text-red-500' : 'text-neutral-500'}`}>
                               {remaining < 0 ? 'Dépassement' : 'Reste'}
                             </span>
-                            <span className={`text-xs font-black ${remaining < 0 ? 'text-red-500' : 'text-neutral-200'}`}>{Math.abs(remaining).toLocaleString()} KM</span>
+                            <span className={`text-xs font-black ${remaining < 0 ? 'text-red-500' : 'text-neutral-200'}`}>{(Math.abs(remaining) ?? 0).toLocaleString()} KM</span>
                           </div>
                           <div className="h-2 bg-neutral-900 rounded-full overflow-hidden shadow-inner">
                             <div className={`h-full transition-all duration-1000 ${isUrgent ? 'bg-red-600' : 'bg-red-900'}`} style={{ width: `${progress}%` }} />
