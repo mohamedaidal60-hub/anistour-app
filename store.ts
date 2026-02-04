@@ -152,17 +152,24 @@ export function useFleetStore() {
 
   const addVehicle = async (v: Vehicle) => {
     setVehicles(prev => [...prev, v]);
-    await supabase.from('vehicles').insert([v]);
+    const { error } = await supabase.from('vehicles').insert([v]);
+    if (error) {
+      console.error("DB Error (Vehicle):", error);
+      alert("Erreur lors de l'enregistrement du véhicule dans le cloud.");
+    }
   };
 
   const updateVehicle = async (updatedV: Vehicle) => {
     setVehicles(prev => prev.map(v => v.id === updatedV.id ? updatedV : v));
-    await supabase.from('vehicles').update(updatedV).eq('id', updatedV.id);
+    const { error } = await supabase.from('vehicles').update(updatedV).eq('id', updatedV.id);
+    if (error) console.error("DB Error (Update Vehicle):", error);
   };
 
   const addEntry = async (e: FinancialEntry) => {
     if (!e.agentName && currentUser) e.agentName = currentUser.name;
-    setEntries(prev => [e, ...prev]);
+    const entryToSave = { ...e, createdAt: e.createdAt || new Date().toISOString() };
+
+    setEntries(prev => [entryToSave, ...prev]);
 
     if (e.vehicleId && e.mileageAtEntry) {
       const vehicle = vehicles.find(v => v.id === e.vehicleId);
@@ -175,7 +182,17 @@ export function useFleetStore() {
       await updateCashDeskBalance(e.cashDeskId, e.amount, e.type);
     }
 
-    await supabase.from('entries').insert([e]);
+    const { error } = await supabase.from('entries').insert([entryToSave]);
+    if (error) {
+      console.error("DB Error (Entry):", error);
+      alert("Erreur critique : L'opération n'a pas pu être enregistrée dans la base de données.");
+    }
+  };
+
+  const addGlobalExpense = async (ge: GlobalExpense) => {
+    setGlobalExpenses(prev => [ge, ...prev]);
+    const { error } = await supabase.from('global_expenses').insert([ge]);
+    if (error) console.error("DB Error (Global Expense):", error);
   };
 
   const updateVehicleMileage = async (vehicleId: string, newMileage: number, agentName: string) => {
@@ -189,7 +206,7 @@ export function useFleetStore() {
 
     const vehicle = vehicles.find(v => v.id === entry.vehicleId);
     if (vehicle) {
-      const newConfigs = vehicle.maintenanceConfigs.map(cfg => {
+      const newConfigs = (vehicle.maintenanceConfigs || []).map(cfg => {
         if (cfg.type === entry.maintenanceType) {
           const doneAt = entry.mileageAtEntry || vehicle.lastMileage;
           return { ...cfg, lastPerformedKm: doneAt, nextDueKm: doneAt + cfg.intervalKm };
@@ -216,14 +233,16 @@ export function useFleetStore() {
     const costPerVehicle = activeVehicles.length > 0 ? (globalTotal / activeVehicles.length) : 0;
 
     let firstDate = new Date();
-    vehicles.forEach(v => {
-      const d = new Date(v.registrationDate);
-      if (d < firstDate) firstDate = d;
-    });
+    if (vehicles.length > 0) {
+      vehicles.forEach(v => {
+        const d = new Date(v.registrationDate);
+        if (d < firstDate) firstDate = d;
+      });
+    }
     const diffMonths = Math.max(1, Math.floor((new Date().getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
 
     return {
-      revenue, vehicleExpenses, globalExpenses: globalTotal, totalExpenses,
+      revenue, expenses: vehicleExpenses, globalExpenses: globalTotal, totalExpenses,
       netProfit, monthlyProfit: netProfit / diffMonths, costPerVehicle, activeCount: activeVehicles.length
     };
   };
@@ -232,7 +251,7 @@ export function useFleetStore() {
     vehicles, entries, globalExpenses, messages, notifications, users, cashDesks, appLogo, currentUser,
     isCloudSyncing, isDataLoaded, setCurrentUser,
     setAppLogo: (logo: string) => { setAppLogoState(logo); setLocal('logo', logo); },
-    addVehicle, updateVehicle, updateVehicleMileage, addEntry,
+    addVehicle, updateVehicle, updateVehicleMileage, addEntry, addGlobalExpense,
     approveMaintenance,
     rejectMaintenance: async (id: string) => {
       setEntries(prev => prev.map(e => e.id === id ? { ...e, status: MaintenanceStatus.REJECTED } : e));
@@ -245,8 +264,14 @@ export function useFleetStore() {
     addUser: async (u: User) => {
       setUsers(prev => [...prev, u]);
       await supabase.from('users').insert([u]);
-      if (u.role === UserRole.AGENT) {
-        const desk: CashDesk = { id: `cash-${u.id}`, userId: u.id, userName: u.name, balance: 0, createdAt: new Date().toISOString() };
+      if (u.role === UserRole.AGENT || (u.role as string) === 'ASSISTANT') {
+        const desk: CashDesk = {
+          id: `cash-${u.id}`,
+          userId: u.id,
+          userName: u.name,
+          balance: 0,
+          createdAt: new Date().toISOString()
+        };
         setCashDesks(prev => [...prev, desk]);
         await supabase.from('cash_desks').insert([desk]);
       }
@@ -259,7 +284,6 @@ export function useFleetStore() {
     deleteEntry: async (id: string) => {
       const entry = entries.find(e => e.id === id);
       if (entry?.cashDeskId) {
-        // Reverse balance change
         const typeForReverse = entry.type === EntryType.REVENUE || entry.type === EntryType.FUNDING ? EntryType.EXPENSE_SIMPLE : EntryType.REVENUE;
         await updateCashDeskBalance(entry.cashDeskId, entry.amount, typeForReverse);
       }
@@ -276,8 +300,16 @@ export function useFleetStore() {
       await supabase.from('users').update({ password: pass }).eq('id', uid);
     },
     sendMessage: async (m: Message) => {
-      setMessages(prev => [...prev, m]);
-      await supabase.from('messages').insert([m]);
+      // Optimistic update
+      const msg = { ...m, timestamp: m.timestamp || new Date().toISOString() };
+      setMessages(prev => [...prev, msg]);
+      setLocal('messages', [...messages, msg]);
+
+      const { error } = await supabase.from('messages').insert([msg]);
+      if (error) {
+        console.error("Chat Error:", error);
+        alert("Erreur d'envoi du message au serveur.");
+      }
     }
   };
 }
