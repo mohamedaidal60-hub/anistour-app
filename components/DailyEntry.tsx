@@ -41,7 +41,7 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
     if (activeForm === 'EXPENSE_GLOBAL') {
       const globalExp = {
         id: Date.now().toString(),
-        date: new Date().toISOString().split('T')[0],
+        date: new Date().toISOString(),
         amount: Number(amount),
         description: description || 'Dépense Générale',
         category: 'AUTRE',
@@ -56,6 +56,7 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
         await store.addEntry({
           id: `global-${globalExp.id}`,
           date: globalExp.date,
+          createdAt: globalExp.date,
           amount: globalExp.amount,
           type: EntryType.EXPENSE_SIMPLE,
           description: `Charge Globale: ${globalExp.description}`,
@@ -77,7 +78,7 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
         id: Date.now().toString(),
         vehicleId: vehicleId || undefined,
         cashDeskId: cashDeskId,
-        date: new Date().toISOString().split('T')[0],
+        date: new Date().toISOString(),
         amount: Number(amount),
         type: activeForm === 'REVENUE' ? EntryType.REVENUE : expenseType,
         description: finalDescription,

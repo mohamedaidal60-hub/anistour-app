@@ -627,6 +627,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                         <div className="flex flex-col items-center justify-center w-20 h-20 bg-neutral-950 rounded-[1.2rem] border border-neutral-800 shrink-0">
                           <p className="text-[14px] font-black text-white">{new Date(e.date).getDate()}</p>
                           <p className="text-[8px] font-black text-neutral-600 uppercase">{new Date(e.date).toLocaleString('fr-FR', { month: 'short' })}</p>
+                          <p className="text-[9px] font-black text-red-500 mt-1">{new Date(e.createdAt || e.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                         </div>
 
                         <div className="flex-1 min-w-0">

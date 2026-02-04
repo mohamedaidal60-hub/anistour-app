@@ -103,7 +103,7 @@ const Journal: React.FC<JournalProps> = ({ store }) => {
                 return (
                   <tr key={entry.id} className="group hover:bg-neutral-800/40 transition-all duration-300">
                     <td className="px-8 py-6">
-                      <p className="font-black text-white text-xs">{new Date(entry.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                      <p className="font-black text-white text-xs">{new Date(entry.createdAt || entry.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                       {!isAgent && <p className="text-[9px] mt-1 uppercase text-neutral-600 font-bold">{new Date(entry.date).toLocaleDateString()}</p>}
                     </td>
                     <td className="px-8 py-6">

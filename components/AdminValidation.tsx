@@ -105,7 +105,9 @@ const AdminValidation: React.FC<AdminValidationProps> = ({ store }) => {
                         <p className="text-[10px] font-black text-red-500 uppercase tracking-[0.2em]">{vehicle?.name || 'Agence / Général'}</p>
                         <div className="flex items-center gap-2 opacity-60">
                           <Clock className="w-3 h-3 text-neutral-500" />
-                          <p className="text-[10px] text-neutral-400 font-black uppercase tracking-widest">{request.agentName || 'Agent'} • {new Date(request.date).toLocaleDateString()}</p>
+                          <p className="text-[10px] text-neutral-400 font-black uppercase tracking-widest">
+                            {request.agentName || 'Agent'} • {new Date(request.date).toLocaleDateString()} à {new Date(request.createdAt || request.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
                         </div>
                       </div>
                     </div>

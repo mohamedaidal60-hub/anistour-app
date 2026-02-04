@@ -76,24 +76,18 @@ const Chat: React.FC<ChatProps> = ({ store }) => {
             return m.receiverId === BROADCAST_ID;
         }
 
-        // Get sender and receiver roles for complex filtering
-        const sender = store.users.find(u => u.id === m.senderId);
-        const receiver = store.users.find(u => u.id === m.receiverId);
-        const isSenderAdmin = sender?.role === UserRole.ADMIN || (sender?.role as string) === 'ADMIN';
-        const isReceiverAdmin = receiver?.role === UserRole.ADMIN || (receiver?.role as string) === 'ADMIN';
+        // Use the role stored in the message for the sender (more reliable)
+        const isSenderAdmin = m.senderRole === UserRole.ADMIN || (m.senderRole as string) === 'ADMIN';
 
         if (isAdmin) {
             // Admin is looking at a specific agent (selectedRecipientId)
-            // They should see all messages between ANY admin and this specific agent
-            const betweenSelectedAndAdmin = (m.senderId === selectedRecipientId && isReceiverAdmin) ||
-                (isSenderAdmin && m.receiverId === selectedRecipientId);
-            return betweenSelectedAndAdmin;
+            const isRelatedToAgent = m.senderId === selectedRecipientId || m.receiverId === selectedRecipientId;
+            // Any 1-on-1 with this agent and an admin (if agent only talks to admins)
+            return isRelatedToAgent && m.receiverId !== BROADCAST_ID;
         } else {
             // Agent is looking at their chat with Admin
-            // They see messages between THEMSELVES and ANY admin
-            const betweenMeAndAdmin = (m.senderId === currentUser.id && isReceiverAdmin) ||
-                (isSenderAdmin && m.receiverId === currentUser.id);
-            return betweenMeAndAdmin;
+            const isMyPrivateChat = m.senderId === currentUser.id || m.receiverId === currentUser.id;
+            return isMyPrivateChat && m.receiverId !== BROADCAST_ID;
         }
     });
 

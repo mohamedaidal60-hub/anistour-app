@@ -345,8 +345,11 @@ export function useFleetStore() {
     sendMessage: async (m: Message) => {
       // Optimistic update
       const msg = { ...m, timestamp: m.timestamp || new Date().toISOString() };
-      setMessages(prev => [...prev, msg]);
-      setLocal('messages', [...messages, msg]);
+      setMessages(prev => {
+        const updated = [...prev, msg];
+        setLocal('messages', updated);
+        return updated;
+      });
 
       const { error } = await supabase.from('messages').insert([msg]);
       if (error) {
