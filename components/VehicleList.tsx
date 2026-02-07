@@ -415,7 +415,7 @@ const AddVehicleModal = ({ onClose, onAdd, store, vehicleToEdit }: { onClose: ()
 const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, store: any, onClose: () => void }) => {
   const [tab, setTab] = useState<'carnet' | 'calculs'>('carnet');
   const [filterText, setFilterText] = useState('');
-  const [simulatedResale, setSimulatedResale] = useState('');
+  const [simulatedResale, setSimulatedResale] = useState(vehicle.simulatedSalePrice?.toString() || '');
   const [editingConfig, setEditingConfig] = useState(false);
   const [tempConfigs, setTempConfigs] = useState<MaintenanceConfig[]>(vehicle.maintenanceConfigs || []);
   const [editingEntry, setEditingEntry] = useState<FinancialEntry | null>(null);
@@ -432,9 +432,17 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
   const netProfit = totalRevenue - totalExpenses;
 
   const monthsActive = Math.max(1, Math.floor((new Date().getTime() - new Date(vehicle.registrationDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
-  const monthlyProfit = netProfit / monthsActive;
 
-  const projectedResult = (Number(simulatedResale) || 0) + netProfit - vehicle.purchasePrice;
+  // New Calculation logic requested:
+  // "pour la simulation on prend le prix d'achat du véhicule puis on diminue le prix de vente" -> This sounds like Gain/Loss on vehicle value.
+  // Gain on Sale = SalePrice - PurchasePrice.
+  // "la perte sera déduite du Marge Nette (Exploitation), si c'est un gain il sera ajouté a Marge Nette (Exploitation)"
+  // So: Total Simulated Profit = NetProfit(Exploitation) + (SimulatedSale - PurchasePrice)
+
+  const simulatedSaleVal = Number(simulatedResale) || 0;
+  const capitalGainLoss = simulatedSaleVal - vehicle.purchasePrice;
+  const totalProjectedProfit = netProfit + capitalGainLoss;
+  const projectedMonthlyProfit = totalProjectedProfit / monthsActive;
 
   const filteredEntries = entries.filter((e: FinancialEntry) => {
     const description = e.description || e.designation || '';
@@ -449,7 +457,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
   });
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 bg-black/90 backdrop-blur-md overflow-hidden print:bg-white print:p-0 print:absolute print:inset-0">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-2 sm:p-4 bg-black/90 backdrop-blur-md overflow-hidden print:bg-white print:p-0 print:absolute print:inset-0">
       <div className="bg-neutral-900 border border-neutral-800 rounded-[2rem] w-full max-w-5xl h-[85vh] flex flex-col relative overflow-hidden shadow-2xl print:h-auto print:border-none print:shadow-none print:rounded-none print:bg-white">
         {/* Premium Header */}
         <div className="relative shrink-0 border-b border-neutral-800 bg-neutral-950 px-6 py-6 overflow-hidden print:bg-white print:border-neutral-200">
@@ -768,13 +776,29 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                   </div>
 
                   <div className="bg-neutral-900 p-4 rounded-2xl border border-neutral-800">
-                    <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest mb-2">Résultat Final Projeté</p>
-                    <div className={`text-2xl font-black ${projectedResult >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                      {(projectedResult).toLocaleString()} <span className="text-xs text-neutral-600">{CURRENCY}</span>
+                    <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest mb-2">Simul. Résultat Global</p>
+                    <div className={`text-2xl font-black ${totalProjectedProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                      {(totalProjectedProfit).toLocaleString()} <span className="text-xs text-neutral-600">{CURRENCY}</span>
                     </div>
-                    <p className="text-[8px] text-neutral-600 mt-2 font-bold">
-                      (Exploitation + Vente) - Achat
+                    <p className="text-[8px] text-neutral-500 mt-1 mb-2 font-bold">
+                      Rentab. Moyenne: <span className="text-white">{(projectedMonthlyProfit).toLocaleString()} {CURRENCY}/Mois</span>
                     </p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="saveSim"
+                        checked={vehicle.simulatedSalePrice === Number(simulatedResale)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            store.updateVehicle({ ...vehicle, simulatedSalePrice: Number(simulatedResale) });
+                          } else {
+                            store.updateVehicle({ ...vehicle, simulatedSalePrice: undefined });
+                          }
+                        }}
+                        className="w-3 h-3 accent-red-600"
+                      />
+                      <label htmlFor="saveSim" className="text-[8px] text-neutral-400 font-bold uppercase cursor-pointer">Sauvegarder la simulation</label>
+                    </div>
                   </div>
 
                   <div>

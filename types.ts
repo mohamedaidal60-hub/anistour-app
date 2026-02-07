@@ -43,11 +43,21 @@ export interface Vehicle {
   image?: string;
   registrationDate: string;
   purchasePrice: number;
-  salePrice?: number;
   lastMileage: number;
   mileageUpdatedBy?: string;
   isArchived: boolean;
+  salePrice?: number;
+  simulatedSalePrice?: number;
   maintenanceConfigs: MaintenanceConfig[];
+  documents?: VehicleDocument[];
+}
+
+export interface VehicleDocument {
+  id: string;
+  type: string;
+  expirationDate: string;
+  photo?: string;
+  alertDaysBefore: number;
 }
 
 export interface CashDesk {

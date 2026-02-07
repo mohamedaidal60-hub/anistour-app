@@ -43,6 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, role, userNa
     { id: 'charges', label: 'Charges Globales', icon: Wallet, roles: [UserRole.ADMIN] },
     { id: 'notifications', label: 'Alertes', icon: Bell, roles: [UserRole.ADMIN, UserRole.AGENT] },
     { id: 'alerts_archive', label: 'Archive Alertes', icon: Archive, roles: [UserRole.ADMIN, UserRole.AGENT] },
+    { id: 'extra', label: 'Extra & Outils', icon: Wallet, roles: [UserRole.ADMIN] },
     { id: 'archives', label: 'Archives Vente', icon: Archive, roles: [UserRole.ADMIN] },
     { id: 'users', label: 'Paramètres', icon: Users, roles: [UserRole.ADMIN] },
   ];

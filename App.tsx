@@ -15,6 +15,7 @@ import Journal from './components/Journal.tsx';
 import GlobalExpenses from './components/GlobalExpenses.tsx';
 import Caisse from './components/Caisse.tsx';
 import Chat from './components/Chat.tsx';
+import Extra from './components/Extra.tsx';
 import { Cloud, RefreshCw, Loader2, Menu, Bell } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -128,6 +129,7 @@ const App: React.FC = () => {
             {activeTab === 'archives' && <Archives store={store} />}
             {activeTab === 'charges' && (store.currentUser?.role === UserRole.ADMIN ? <GlobalExpenses store={store} /> : <div className="p-20 text-center text-red-500 font-black">ACCÈS REFUSÉ</div>)}
             {activeTab === 'users' && (store.currentUser?.role === UserRole.ADMIN ? <UserManagement store={store} /> : <div className="p-20 text-center text-red-500 font-black">ACCÈS REFUSÉ</div>)}
+            {activeTab === 'extra' && (store.currentUser?.role === UserRole.ADMIN ? <Extra store={store} /> : <div className="p-20 text-center text-red-500 font-black">ACCÈS REFUSÉ</div>)}
           </div>
         </main>
 
@@ -135,6 +137,16 @@ const App: React.FC = () => {
       </div>
 
       <style>{`
+        /* Hide spin buttons */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+          -webkit-appearance: none; 
+          margin: 0; 
+        }
+        input[type=number] {
+          -moz-appearance: textfield;
+        }
+
         .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #0a0a0a; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #262626; border-radius: 10px; }
