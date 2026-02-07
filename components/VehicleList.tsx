@@ -462,7 +462,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/95 backdrop-blur-xl overflow-hidden print:bg-white print:p-0 print:absolute print:inset-0">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-[2rem] w-full max-w-6xl h-full max-h-[90vh] flex flex-col relative overflow-hidden shadow-2xl print:h-auto print:border-none print:shadow-none print:rounded-none print:bg-white">
+      <div className="bg-neutral-900 border border-neutral-800 rounded-[2rem] w-full max-w-4xl h-full max-h-[80vh] flex flex-col relative overflow-hidden shadow-2xl print:h-auto print:border-none print:shadow-none print:rounded-none print:bg-white">
         {/* Premium Header */}
         <div className="relative shrink-0 border-b border-neutral-800 bg-neutral-950 px-6 py-6 overflow-hidden print:bg-white print:border-neutral-200">
           {/* Header Content */}
