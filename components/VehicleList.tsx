@@ -434,8 +434,11 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
   const [simulatedResale, setSimulatedResale] = useState('');
   const [editingConfig, setEditingConfig] = useState(false);
   const [tempConfigs, setTempConfigs] = useState<MaintenanceConfig[]>(vehicle.maintenanceConfigs || []);
+  const [editingEntry, setEditingEntry] = useState<FinancialEntry | null>(null);
 
   const isAdmin = store.currentUser?.role === UserRole.ADMIN;
+  // HIDE JOURNAL FOR AGENTS
+  const isAgent = store.currentUser?.role === UserRole.AGENT;
 
   const entries = store.entries.filter((e: FinancialEntry) => e.vehicleId === vehicle.id);
   const revenueEntries = entries.filter((e: FinancialEntry) => e.type === EntryType.REVENUE);
@@ -599,78 +602,109 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                 </div>
               </div>
 
-              {/* History List - FULL DETAILS AS REQUESTED */}
-              <div className="bg-neutral-950 border border-neutral-800 rounded-[2.5rem] p-10 shadow-2xl">
-                <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-6 mb-8">
-                  <h3 className="text-lg font-black uppercase tracking-tighter text-white">Journal des Opérations</h3>
-                  <div className="relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" />
-                    <input
-                      type="text"
-                      placeholder="Filtrer l'historique..."
-                      className="pl-12 pr-6 py-3 bg-neutral-900 border border-neutral-800 rounded-2xl text-xs outline-none focus:border-red-600 w-full sm:w-64 font-bold text-white transition-all"
-                      value={filterText}
-                      onChange={e => setFilterText(e.target.value)}
-                    />
+              {/* History List - HIDDEN FOR AGENTS */}
+              {!isAgent && (
+                <div className="bg-neutral-950 border border-neutral-800 rounded-[2.5rem] p-10 shadow-2xl">
+                  <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-6 mb-8">
+                    <h3 className="text-lg font-black uppercase tracking-tighter text-white">Journal des Opérations</h3>
+                    <div className="relative">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" />
+                      <input
+                        type="text"
+                        placeholder="Filtrer l'historique..."
+                        className="pl-12 pr-6 py-3 bg-neutral-900 border border-neutral-800 rounded-2xl text-xs outline-none focus:border-red-600 w-full sm:w-64 font-bold text-white transition-all"
+                        value={filterText}
+                        onChange={e => setFilterText(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {filteredEntries.length === 0 ? (
+                      <div className="py-20 text-center border-2 border-dashed border-neutral-900 rounded-[2rem]">
+                        <FileText className="w-12 h-12 text-neutral-800 mx-auto mb-4" />
+                        <p className="text-neutral-600 text-xs font-black uppercase tracking-widest">Aucun historique disponible</p>
+                      </div>
+                    ) : (
+                      filteredEntries.map((e: FinancialEntry) => (
+                        <div key={e.id} className="group bg-neutral-900/40 border border-neutral-800 hover:border-neutral-700 p-6 rounded-[1.5rem] transition-all flex flex-col md:flex-row gap-6 items-start md:items-center relative">
+                          <div className="flex flex-col items-center justify-center w-20 h-20 bg-neutral-950 rounded-[1.2rem] border border-neutral-800 shrink-0">
+                            <p className="text-[14px] font-black text-white">{new Date(e.date).getDate()}</p>
+                            <p className="text-[8px] font-black text-neutral-600 uppercase">{new Date(e.date).toLocaleString('fr-FR', { month: 'short' })}</p>
+                            <p className="text-[9px] font-black text-red-500 mt-1">{new Date(e.createdAt || e.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              {e.type === EntryType.REVENUE ? (
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-lg shadow-emerald-900/20" />
+                              ) : (
+                                <div className="w-2 h-2 rounded-full bg-red-600 shadow-lg shadow-red-900/20" />
+                              )}
+                              <h4 className="text-sm font-black text-neutral-100 uppercase tracking-tight truncate group-hover:text-red-500 transition-colors">
+                                {e.description || e.designation || 'Sans description'}
+                              </h4>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 opacity-60">
+                              <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-neutral-400">
+                                <User className="w-3 h-3 text-red-600" />
+                                <span>Agent : <span className="text-neutral-100">{e.agentName || 'Système'}</span></span>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-neutral-400">
+                                <Ruler className="w-3 h-3 text-red-600" />
+                                <span>Index : <span className="text-neutral-100">{(e.mileageAtEntry || 0).toLocaleString()} KM</span></span>
+                              </div>
+                              {e.maintenanceType && (
+                                <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-amber-500">
+                                  <Wrench className="w-3 h-3" />
+                                  <span>{e.maintenanceType}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-4">
+                            {e.proofPhoto && (
+                              <button
+                                onClick={() => {
+                                  // Open photo in new tab
+                                  const w = window.open('about:blank');
+                                  if (w) {
+                                    w.document.write(`<img src="${e.proofPhoto}" style="max-width: 100%; height: auto;"/>`);
+                                    w.document.close();
+                                  }
+                                }}
+                                className="p-2 bg-neutral-950 border border-neutral-800 rounded-xl text-neutral-400 hover:text-white hover:border-neutral-600 transition-all"
+                                title="Voir la preuve (Photo)"
+                              >
+                                <Camera className="w-4 h-4" />
+                              </button>
+                            )}
+
+                            {isAdmin && (
+                              <button
+                                onClick={() => setEditingEntry(e)}
+                                className="p-2 bg-neutral-950 border border-neutral-800 rounded-xl text-neutral-400 hover:text-amber-500 hover:border-amber-900/30 transition-all"
+                                title="Modifier l'entrée"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                            )}
+
+                            <div className="text-right shrink-0 w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-neutral-800">
+                              <p className={`text-xl font-black ${e.type === EntryType.REVENUE ? 'text-emerald-500' : 'text-neutral-200'}`}>
+                                {e.type === EntryType.REVENUE ? '+' : '-'}{(e.amount || 0).toLocaleString()} <span className="text-[10px] text-neutral-600">{CURRENCY}</span>
+                              </p>
+                              <p className="text-[8px] font-black text-neutral-600 uppercase mt-1 tracking-[0.2em]">{e.type}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
-
-                <div className="space-y-4">
-                  {filteredEntries.length === 0 ? (
-                    <div className="py-20 text-center border-2 border-dashed border-neutral-900 rounded-[2rem]">
-                      <FileText className="w-12 h-12 text-neutral-800 mx-auto mb-4" />
-                      <p className="text-neutral-600 text-xs font-black uppercase tracking-widest">Aucun historique disponible</p>
-                    </div>
-                  ) : (
-                    filteredEntries.map((e: FinancialEntry) => (
-                      <div key={e.id} className="group bg-neutral-900/40 border border-neutral-800 hover:border-neutral-700 p-6 rounded-[1.5rem] transition-all flex flex-col md:flex-row gap-6 items-start md:items-center">
-                        <div className="flex flex-col items-center justify-center w-20 h-20 bg-neutral-950 rounded-[1.2rem] border border-neutral-800 shrink-0">
-                          <p className="text-[14px] font-black text-white">{new Date(e.date).getDate()}</p>
-                          <p className="text-[8px] font-black text-neutral-600 uppercase">{new Date(e.date).toLocaleString('fr-FR', { month: 'short' })}</p>
-                          <p className="text-[9px] font-black text-red-500 mt-1">{new Date(e.createdAt || e.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            {e.type === EntryType.REVENUE ? (
-                              <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-lg shadow-emerald-900/20" />
-                            ) : (
-                              <div className="w-2 h-2 rounded-full bg-red-600 shadow-lg shadow-red-900/20" />
-                            )}
-                            <h4 className="text-sm font-black text-neutral-100 uppercase tracking-tight truncate group-hover:text-red-500 transition-colors">
-                              {e.description || e.designation || 'Sans description'}
-                            </h4>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 opacity-60">
-                            <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-neutral-400">
-                              <User className="w-3 h-3 text-red-600" />
-                              <span>Agent : <span className="text-neutral-100">{e.agentName || 'Système'}</span></span>
-                            </div>
-                            <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-neutral-400">
-                              <Ruler className="w-3 h-3 text-red-600" />
-                              <span>Index : <span className="text-neutral-100">{(e.mileageAtEntry || 0).toLocaleString()} KM</span></span>
-                            </div>
-                            {e.maintenanceType && (
-                              <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-amber-500">
-                                <Wrench className="w-3 h-3" />
-                                <span>{e.maintenanceType}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="text-right shrink-0 w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-neutral-800">
-                          <p className={`text-xl font-black ${e.type === EntryType.REVENUE ? 'text-emerald-500' : 'text-neutral-200'}`}>
-                            {e.type === EntryType.REVENUE ? '+' : '-'}{(e.amount || 0).toLocaleString()} <span className="text-[10px] text-neutral-600">{CURRENCY}</span>
-                          </p>
-                          <p className="text-[8px] font-black text-neutral-600 uppercase mt-1 tracking-[0.2em]">{e.type}</p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
+              )}
             </div>
           ) : (
             <div className="space-y-10">
@@ -710,9 +744,54 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
             </div>
           )}
         </div>
+
+        {editingEntry && (
+          <div className="absolute inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-8 w-full max-w-lg shadow-2xl">
+              <h3 className="text-xl font-black uppercase tracking-tighter text-white mb-6">Modifier l'opération</h3>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                store.updateEntry(editingEntry);
+                setEditingEntry(null);
+              }} className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Description</label>
+                  <input
+                    className="w-full bg-neutral-950 border border-neutral-800 p-3 rounded-xl text-white text-sm"
+                    value={editingEntry.description}
+                    onChange={e => setEditingEntry({ ...editingEntry, description: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Montant ({CURRENCY})</label>
+                  <input
+                    type="number"
+                    className="w-full bg-neutral-950 border border-neutral-800 p-3 rounded-xl text-white text-sm"
+                    value={editingEntry.amount}
+                    onChange={e => setEditingEntry({ ...editingEntry, amount: parseFloat(e.target.value) })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Date</label>
+                  <input
+                    type="datetime-local"
+                    className="w-full bg-neutral-950 border border-neutral-800 p-3 rounded-xl text-white text-sm"
+                    value={editingEntry.date ? new Date(editingEntry.date).toISOString().slice(0, 16) : ''}
+                    onChange={e => setEditingEntry({ ...editingEntry, date: new Date(e.target.value).toISOString() })}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <button type="button" onClick={() => setEditingEntry(null)} className="px-4 py-2 rounded-xl text-neutral-400 hover:text-white text-xs font-bold uppercase">Annuler</button>
+                  <button type="submit" className="px-6 py-2 bg-red-700 hover:bg-red-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg">Enregistrer</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
-};
+}; // End of VehicleDetailModal
 
 export default VehicleList;

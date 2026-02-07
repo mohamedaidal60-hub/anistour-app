@@ -81,12 +81,62 @@ const GlobalExpenses: React.FC<{ store: any }> = ({ store }) => {
             {/* Action Bar */}
             <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold">Historique des Charges</h2>
-                <button
-                    onClick={() => setShowForm(true)}
-                    className="flex items-center gap-2 bg-red-700 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all"
-                >
-                    <Plus className="w-4 h-4" /> Nouvelle Charge
-                </button>
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => {
+                            const now = new Date();
+                            const currentMonth = now.getMonth();
+                            const currentYear = now.getFullYear();
+
+                            // Filter expenses for current month
+                            const monthExpenses = store.globalExpenses.filter((e: GlobalExpense) => {
+                                const d = new Date(e.date);
+                                return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+                            });
+
+                            const total = monthExpenses.reduce((sum: number, e: GlobalExpense) => sum + (e.amount || 0), 0);
+                            const activeVehicles = store.vehicles.filter((v: any) => !v.isArchived);
+
+                            if (activeVehicles.length === 0) {
+                                alert("Aucun véhicule actif sur le parc.");
+                                return;
+                            }
+
+                            if (total === 0) {
+                                alert("Aucune charge globale pour ce mois.");
+                                return;
+                            }
+
+                            const share = total / activeVehicles.length;
+                            const monthName = now.toLocaleString('fr-FR', { month: 'long', year: 'numeric' });
+
+                            if (confirm(`Voulez-vous répartir les charges de ${monthName} ?\n\nTotal: ${total.toLocaleString()} DA\nVéhicules actifs: ${activeVehicles.length}\nCoût par véhicule: ${share.toLocaleString()} DA\n\nCela créera une dépense sur chaque véhicule.`)) {
+                                activeVehicles.forEach(async (v: any) => {
+                                    await store.addEntry({
+                                        id: `dist-${Date.now()}-${v.id}`,
+                                        vehicleId: v.id,
+                                        date: new Date().toISOString(),
+                                        amount: parseFloat(share.toFixed(2)),
+                                        type: 'EXPENSE', // EntryType.EXPENSE_SIMPLE
+                                        description: `Quote-part Charges Globales - ${monthName}`,
+                                        agentName: 'Système',
+                                        status: 'APPROVED'
+                                    });
+                                });
+                                alert("Répartition effectuée avec succès sur le journal des véhicules.");
+                            }
+                        }}
+                        className="flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 px-4 py-2 rounded-xl text-sm font-bold transition-all border border-neutral-700"
+                    >
+                        <TrendingDown className="w-4 h-4" /> Répartir (Mois)
+                    </button>
+                    <button
+                        onClick={() => setShowForm(true)}
+                        className="flex items-center gap-2 bg-red-700 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all"
+                    >
+                        <Plus className="w-4 h-4" /> Nouvelle Charge
+                    </button>
+                </div>
             </div>
 
             {/* Form Modal */}

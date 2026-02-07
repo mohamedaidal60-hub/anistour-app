@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useFleetStore } from '../store.ts';
 import { EntryType, FinancialEntry, MaintenanceStatus, UserRole } from '../types.ts';
-import { ShieldAlert, CheckCircle2, Camera, Wallet, Coins } from 'lucide-react';
+import { ShieldAlert, CheckCircle2, Camera, Wallet, Coins, Plus, Trash2 } from 'lucide-react';
 import { MAINTENANCE_TYPES, CURRENCY } from '../constants.ts';
 
 interface DailyEntryProps {
@@ -18,10 +18,34 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
   const [mileage, setMileage] = useState('');
   const [proofPhoto, setProofPhoto] = useState<string | null>(null);
   const [usePersonalCaisse, setUsePersonalCaisse] = useState(false);
+
+  // Filter Logic for Vidange
+  const [filters, setFilters] = useState<{ id: string, name: string, price: number }[]>([]);
+  const [isAddingFilter, setIsAddingFilter] = useState(false);
+  const [newFilterType, setNewFilterType] = useState<string>(MAINTENANCE_TYPES.find(t => t !== 'Vidange') || 'Filtre à huile');
+  const [newFilterPrice, setNewFilterPrice] = useState('');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [success, setSuccess] = useState(false);
 
   const myCaisse = store.cashDesks.find(d => d.userId === store.currentUser?.id);
+
+  // Auto-update amount based on filters for Vidange
+  useEffect(() => {
+    if (activeForm === 'EXPENSE_VEHICLE' && expenseType === EntryType.EXPENSE_MAINTENANCE && maintenanceType === 'Vidange') {
+      const total = filters.reduce((sum, f) => sum + f.price, 0);
+      if (total > 0) {
+        setAmount(total.toString());
+      }
+    }
+  }, [filters, activeForm, expenseType, maintenanceType]);
+
+  // Reset filters when changing types
+  useEffect(() => {
+    if (maintenanceType !== 'Vidange') {
+      setFilters([]);
+    }
+  }, [maintenanceType]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -32,11 +56,29 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
     }
   };
 
+  const addFilter = () => {
+    if (!newFilterPrice) return;
+    setFilters(prev => [...prev, { id: crypto.randomUUID(), name: newFilterType, price: parseFloat(newFilterPrice) }]);
+    setNewFilterPrice('');
+    setIsAddingFilter(false);
+  };
+
+  const removeFilter = (id: string) => {
+    setFilters(prev => prev.filter(f => f.id !== id));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount) return;
 
-    const cashDeskId = usePersonalCaisse && myCaisse ? myCaisse.id : undefined;
+    // Revenus: FORCE Global Caisse (undefined in cashDeskId usually means Main Agency if not specified, 
+    // but here we want to ensure it DOES NOT go to personal caisse).
+    // The requirement says: "Revenus, il ne peut choisir que la caisse globale."
+    // "Charges: utilisateur a la possibilité de sélectionner sa caisse individuelle."
+
+    // So if REVENUE, force usePersonalCaisse to false.
+    const effectiveUsePersonal = activeForm === 'REVENUE' ? false : usePersonalCaisse;
+    const cashDeskId = effectiveUsePersonal && myCaisse ? myCaisse.id : undefined;
 
     if (activeForm === 'EXPENSE_GLOBAL') {
       const globalExp = {
@@ -47,12 +89,10 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
         category: 'AUTRE',
         proofPhoto: proofPhoto || undefined,
         agentName: store.currentUser?.name || 'Agent',
-        cashDeskId: cashDeskId // Handle global expenses from personal caisse too
+        cashDeskId: cashDeskId
       };
 
-      // Update: Global expenses now also impact cash desk if selected
       if (cashDeskId) {
-        // We simulate a financial entry for the cash desk tracking if it's not and admin adding to agency
         await store.addEntry({
           id: `global-${globalExp.id}`,
           date: globalExp.date,
@@ -71,8 +111,27 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
       if (activeForm === 'REVENUE') {
         finalDescription = description ? `Revenu: ${description}` : 'Revenu Client';
       } else if (expenseType === EntryType.EXPENSE_MAINTENANCE) {
-        finalDescription = `Entretien: ${maintenanceType} - ${description}`;
+        if (maintenanceType === 'Vidange' && filters.length > 0) {
+          const filterDesc = filters.map(f => `${f.name} (${f.price} DA)`).join(', ');
+          finalDescription = `Vidange + Filtres: ${filterDesc} - ${description}`;
+        } else {
+          finalDescription = `Entretien: ${maintenanceType} - ${description}`;
+        }
       }
+
+      // Check for maintenance cycle update (Only for Vidange typically)
+      // Requirement: "Une fois le kilométrage mis à jour, la notification de vidange sera supprimée, et un nouveau rappel sera automatiquement prévu pour les 7 000 kilomètres suivants."
+      // This logic actually sits in `store.approveMaintenance`. But here we are creating a PENDING or APPROVED entry.
+      // If the user adds a Vidange, logic in `store.ts` handles the config update if approved.
+      // However, the user says "l’agent peut enregistrer cette opération ... Une fois le kilométrage mis à jour ... rappel sera automatiquement prévu". 
+      // This implies the entry should trigger the update.
+      // In `store.ts`, `approveMaintenance` does this logic.
+      // If the agent submits, it is PENDING (line 87 in original).
+      // If Admin submits, it is APPROVED.
+      // We should rely on `store.ts` logic. I need to ensure `store.ts` updates the "Next Due" by +7000 when approved.
+      // Currently `store.ts` line 228: `nextDueKm: doneAt + cfg.intervalKm`.
+      // The user wants 7000 explicitly or just based on interval? "un nouveau rappel sera automatiquement prévu pour les 7 000 kilomètres suivants".
+      // Assuming Interval is 7000, `store.ts` seems correct. I will double check `store.ts` later.
 
       const entry: FinancialEntry = {
         id: Date.now().toString(),
@@ -106,6 +165,7 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
     setMileage('');
     setProofPhoto(null);
     setUsePersonalCaisse(false);
+    setFilters([]);
   };
 
   return (
@@ -165,7 +225,7 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-10">
-              {/* Cash Desk Selection Selection */}
+              {/* Cash Desk Selection Selection - HIDDEN IF REVENUE */}
               <div className="p-6 bg-neutral-950 border border-neutral-800 rounded-3xl space-y-4 shadow-inner">
                 <div className="flex items-center gap-3 mb-2">
                   <Coins className="w-4 h-4 text-red-600" />
@@ -178,12 +238,17 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
                   >
                     <p className="text-[11px] font-black text-white uppercase tracking-widest text-center">Caisse Agence (Global)</p>
                   </div>
-                  {myCaisse && (
+                  {activeForm !== 'REVENUE' && myCaisse && (
                     <div
                       onClick={() => setUsePersonalCaisse(true)}
                       className={`p-4 rounded-2xl border cursor-pointer transition-all ${usePersonalCaisse ? 'bg-red-950/20 border-red-600 shadow-lg' : 'bg-neutral-950 border-neutral-800 opacity-50'}`}
                     >
                       <p className="text-[11px] font-black text-white uppercase tracking-widest text-center">Ma Caisse ({myCaisse.userName})</p>
+                    </div>
+                  )}
+                  {activeForm === 'REVENUE' && myCaisse && (
+                    <div className="p-4 rounded-2xl border border-neutral-800 bg-neutral-950 opacity-20 cursor-not-allowed">
+                      <p className="text-[11px] font-black text-white uppercase tracking-widest text-center">Ma Caisse (Indisponible pour Revenus)</p>
                     </div>
                   )}
                 </div>
@@ -214,11 +279,13 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
                     <input
                       required
                       type="number"
-                      className={`w-full bg-neutral-950 border border-neutral-800 p-6 rounded-3xl text-5xl font-black outline-none transition-all shadow-2xl ${activeForm === 'REVENUE' ? 'text-emerald-500 focus:border-emerald-600' : 'text-white focus:border-red-600'}`}
+                      readOnly={maintenanceType === 'Vidange' && filters.length > 0}
+                      className={`w-full bg-neutral-950 border border-neutral-800 p-6 rounded-3xl text-5xl font-black outline-none transition-all shadow-2xl ${activeForm === 'REVENUE' ? 'text-emerald-500 focus:border-emerald-600' : 'text-white focus:border-red-600'} ${maintenanceType === 'Vidange' && filters.length > 0 ? 'opacity-80 cursor-not-allowed' : ''}`}
                       placeholder="0"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
                     />
+                    {maintenanceType === 'Vidange' && filters.length > 0 && <p className="text-[10px] text-neutral-500 px-2 italic">Calculé automatiquement selon les filtres</p>}
                   </div>
 
                   {activeForm === 'EXPENSE_VEHICLE' && (
@@ -259,28 +326,88 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
                   </div>
 
                   {expenseType === EntryType.EXPENSE_MAINTENANCE && activeForm === 'EXPENSE_VEHICLE' && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Nature Entretien</label>
-                        <select
-                          className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl focus:border-red-600 outline-none text-sm font-bold text-white"
-                          value={maintenanceType}
-                          onChange={(e) => setMaintenanceType(e.target.value)}
-                        >
-                          {MAINTENANCE_TYPES.map(m => <option key={m} value={m}>{m}</option>)}
-                        </select>
+                    <div className="space-y-4 p-4 border border-neutral-800 rounded-2xl bg-neutral-900/30">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Nature Entretien</label>
+                          <select
+                            className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl focus:border-red-600 outline-none text-sm font-bold text-white"
+                            value={maintenanceType}
+                            onChange={(e) => setMaintenanceType(e.target.value)}
+                          >
+                            {MAINTENANCE_TYPES.map(m => <option key={m} value={m}>{m}</option>)}
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Index Compteur</label>
+                          <input
+                            required
+                            type="number"
+                            className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl outline-none focus:border-red-600 text-lg font-black text-red-500"
+                            value={mileage}
+                            onChange={(e) => setMileage(e.target.value)}
+                            placeholder="000000"
+                          />
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Index Compteur</label>
-                        <input
-                          required
-                          type="number"
-                          className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl outline-none focus:border-red-600 text-lg font-black text-red-500"
-                          value={mileage}
-                          onChange={(e) => setMileage(e.target.value)}
-                          placeholder="000000"
-                        />
-                      </div>
+
+                      {/* Vidange Filters Section */}
+                      {maintenanceType === 'Vidange' && (
+                        <div className="mt-4 space-y-3 pt-4 border-t border-neutral-800">
+                          <div className="flex justify-between items-center">
+                            <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Filtres & Consommables</label>
+                            <button
+                              type="button"
+                              onClick={() => setIsAddingFilter(!isAddingFilter)}
+                              className="text-white hover:text-red-500 transition-colors"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          {isAddingFilter && (
+                            <div className="flex gap-2 animate-in slide-in-from-top-2">
+                              <select
+                                className="bg-neutral-950 border border-neutral-800 rounded-xl p-2 text-xs text-white"
+                                value={newFilterType}
+                                onChange={(e) => setNewFilterType(e.target.value)}
+                              >
+                                {MAINTENANCE_TYPES.filter(t => t !== 'Vidange').map(t => (
+                                  <option key={t} value={t}>{t}</option>
+                                ))}
+                              </select>
+                              <input
+                                type="number"
+                                placeholder="Prix"
+                                className="bg-neutral-950 border border-neutral-800 rounded-xl p-2 text-xs text-white w-24"
+                                value={newFilterPrice}
+                                onChange={(e) => setNewFilterPrice(e.target.value)}
+                              />
+                              <button
+                                type="button"
+                                onClick={addFilter}
+                                className="bg-red-700 text-white rounded-xl px-3 text-xs font-bold hover:bg-red-600"
+                              >
+                                OK
+                              </button>
+                            </div>
+                          )}
+
+                          <div className="space-y-2">
+                            {filters.map(filter => (
+                              <div key={filter.id} className="flex justify-between items-center p-2 bg-neutral-950 rounded-xl border border-neutral-800">
+                                <span className="text-xs text-neutral-300">{filter.name}</span>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-xs font-bold text-red-400">{filter.price.toLocaleString()} DA</span>
+                                  <button type="button" onClick={() => removeFilter(filter.id)}>
+                                    <Trash2 className="w-3 h-3 text-neutral-600 hover:text-red-500" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 

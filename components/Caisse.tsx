@@ -91,14 +91,12 @@ const Caisse: React.FC<CaisseProps> = ({ store }) => {
                             </h3>
 
                             <div className="mt-10 pt-10 border-t border-neutral-900 flex gap-4">
-                                {isAdmin && (
-                                    <button
-                                        onClick={() => setShowFundModal(true)}
-                                        className="flex-1 py-5 bg-white text-black rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-neutral-200 transition-all active:scale-95 shadow-xl"
-                                    >
-                                        Alimenter la caisse
-                                    </button>
-                                )}
+                                <button
+                                    onClick={() => setShowFundModal(true)}
+                                    className="flex-1 py-5 bg-white text-black rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-neutral-200 transition-all active:scale-95 shadow-xl"
+                                >
+                                    Alimenter la caisse
+                                </button>
                             </div>
                         </div>
 
