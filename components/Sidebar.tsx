@@ -91,7 +91,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, role, userNa
           const isValidation = item.id === 'validation';
           const isNotif = item.id === 'notifications';
           const pendingCount = store.entries.filter(e => e.status === 'PENDING').length;
-          const notifCount = store.notifications.length;
+          const notifCount = store.notifications.filter((n: any) => !n.isArchived).length;
 
           return (
             <button

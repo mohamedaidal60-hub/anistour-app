@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Message, UserRole, User } from '../types.ts';
 import { useFleetStore } from '../store.ts';
 import { Send, MessageSquare, X, User as UserIcon, Shield, ChevronLeft, Search, Filter, Megaphone } from 'lucide-react';
@@ -18,17 +18,37 @@ const Chat: React.FC<ChatProps> = ({ store }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    const currentUser = store.currentUser;
-    if (!currentUser) return null;
+    // Unread Messages Logic
+    const [lastReadTime, setLastReadTime] = useState(() => {
+        return localStorage.getItem('chat_last_read') || new Date().toISOString(); // Default to now (read) if new
+    });
 
-    const isAdmin = currentUser.role === UserRole.ADMIN || (currentUser.role as string).toUpperCase() === 'ADMIN';
+    const hasUnread = useMemo(() => {
+        if (isOpen) return false;
+        return store.messages.some(m => new Date(m.timestamp) > new Date(lastReadTime));
+    }, [store.messages, lastReadTime, isOpen]);
+
+    useEffect(() => {
+        if (isOpen) {
+            const now = new Date().toISOString();
+            setLastReadTime(now);
+            localStorage.setItem('chat_last_read', now);
+        }
+    }, [isOpen, store.messages]); // Update when messages arrive while open too
+
+    const currentUser = store.currentUser;
+    // Early return if no user, but hooks must be called before. 
+    // Ideally this check should be higher or hooks should be conditional (not possible), 
+    // but since App.tsx handles login check, currentUser should be present.
+
+    const isAdmin = currentUser && (currentUser.role === UserRole.ADMIN || (currentUser.role as string).toUpperCase() === 'ADMIN');
 
     // Get the primary admin for agents to talk to (fallback to first found admin)
-    const primaryAdmin = store.users.find(u => u.role === UserRole.ADMIN) || { id: 'admin_1', name: 'Admin' };
+    const primaryAdmin = store.users.find(u => u.role === UserRole.ADMIN) || { id: 'admin_1', name: 'Admin' } as User;
 
     // List of agents for the admin to select
     const agents = store.users.filter(u => {
-        if (u.id === currentUser.id) return false;
+        if (!currentUser || u.id === currentUser.id) return false;
         return (u.role as string).toUpperCase() === 'ASSISTANT' || u.role === UserRole.AGENT;
     });
 
@@ -40,7 +60,7 @@ const Chat: React.FC<ChatProps> = ({ store }) => {
 
     // Initial setup when opening chat
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && currentUser) {
             if (isAdmin) {
                 setShowList(true);
             } else {
@@ -53,7 +73,7 @@ const Chat: React.FC<ChatProps> = ({ store }) => {
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!text.trim() || !selectedRecipientId) return;
+        if (!text.trim() || !selectedRecipientId || !currentUser) return;
 
         const msg: Message = {
             id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
@@ -71,6 +91,8 @@ const Chat: React.FC<ChatProps> = ({ store }) => {
 
     // FILTER MESSAGES: Critical part for security
     const filteredMessages = store.messages.filter(m => {
+        if (!currentUser) return false;
+
         // 1. Broadcast messages are visible to everyone
         if (selectedRecipientId === BROADCAST_ID) {
             return m.receiverId === BROADCAST_ID;
@@ -95,6 +117,8 @@ const Chat: React.FC<ChatProps> = ({ store }) => {
         ? 'Diffusion Globale'
         : (store.users.find(u => u.id === selectedRecipientId)?.name || 'Canal Direction');
 
+    if (!currentUser) return null;
+
     return (
         <div className="fixed bottom-6 right-6 z-[100]">
             {!isOpen && (
@@ -103,7 +127,7 @@ const Chat: React.FC<ChatProps> = ({ store }) => {
                     className="w-16 h-16 bg-red-700 text-white rounded-[2rem] flex items-center justify-center shadow-2xl hover:scale-105 transition-all active:scale-95 border-4 border-neutral-900 group relative"
                 >
                     <MessageSquare className="w-7 h-7" />
-                    {store.messages.length > 0 && (
+                    {hasUnread && (
                         <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full border-4 border-neutral-900 flex items-center justify-center text-[10px] font-black">!</span>
                     )}
                 </button>
