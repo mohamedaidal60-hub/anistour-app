@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useFleetStore } from '../store.ts';
 import { EntryType, MaintenanceStatus, UserRole, FinancialEntry } from '../types.ts';
-import { ArrowUpRight, ArrowDownLeft, Wrench, Search, ShieldAlert, User as UserIcon, Coins, Edit3, Check, X, Printer, PrinterIcon } from 'lucide-react';
+import { ArrowUpRight, ArrowDownLeft, Wrench, Search, ShieldAlert, User as UserIcon, Coins, Edit3, Check, X, PrinterIcon, Calendar, Filter } from 'lucide-react';
 import { CURRENCY } from '../constants.ts';
 
 interface JournalProps {
@@ -15,20 +15,49 @@ const Journal: React.FC<JournalProps> = ({ store }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<Partial<FinancialEntry>>({});
 
+  // Advanced Filters
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [selectedVehicleId, setSelectedVehicleId] = useState('');
+  const [selectedType, setSelectedType] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+
   const today = new Date().toISOString().split('T')[0];
 
   const filteredEntries = store.entries.filter(entry => {
+    // 1. Role Limitation (Agent sees only today unless using explicit filters? Usually Agent sees today)
+    // If Admin, sees all. If Agent, sees today. 
+    // BUT user asked for filters "to print what I need". 
+    // If I add date filter, I should respect it over "today".
+
+    // Date Filter
     const entryDate = entry.date.split('T')[0];
-    const isToday = entryDate === today;
+    if (startDate && entryDate < startDate) return false;
+    if (endDate && entryDate > endDate) return false;
+
+    // Vehicle Filter
+    if (selectedVehicleId && entry.vehicleId !== selectedVehicleId) return false;
+
+    // Type Filter (Entretien vs Autre)
+    if (selectedType) {
+      if (selectedType === 'MAINTENANCE' && entry.type !== EntryType.EXPENSE_MAINTENANCE) return false;
+      if (selectedType === 'OTHER' && entry.type === EntryType.EXPENSE_MAINTENANCE) return false;
+    }
+
+    // Existing Search
     const desc = entry.description || entry.designation || '';
     const agent = entry.agentName || entry.userName || '';
     const matchesSearch = desc.toLowerCase().includes(searchTerm.toLowerCase()) ||
       agent.toLowerCase().includes(searchTerm.toLowerCase());
 
-    if (isAgent) {
-      return isToday && matchesSearch;
+    if (!matchesSearch) return false;
+
+    // Agent Restriction (Default to today if no date filter set)
+    if (isAgent && !startDate && !endDate) {
+      return entryDate === today;
     }
-    return matchesSearch;
+
+    return true;
   });
 
   const sortedEntries = [...filteredEntries].sort((a, b) => b.date.localeCompare(a.date));
@@ -40,10 +69,6 @@ const Journal: React.FC<JournalProps> = ({ store }) => {
 
   const saveEdit = async () => {
     if (editingId && editValue) {
-      // Force status to PENDING for re-validation if edited by Agent
-      // If Admin edits, it stays APPROVED or validated.
-      // But here user only asked for "Admin hand to modify all". 
-      // Existing logic forces PENDING. I will keep it for Agent, but for Admin valid immediately.
       const status = store.currentUser?.role === UserRole.ADMIN ? MaintenanceStatus.APPROVED : MaintenanceStatus.PENDING;
       const updatedEntry = { ...editValue, status: status } as FinancialEntry;
       await store.updateEntry(updatedEntry);
@@ -54,22 +79,32 @@ const Journal: React.FC<JournalProps> = ({ store }) => {
   return (
     <div className="space-y-4 print:space-y-2">
       <h2 className="hidden print:block text-2xl font-black uppercase text-black mb-4">Registre des Opérations</h2>
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-neutral-900/30 p-4 rounded-[1.5rem] border border-neutral-800 print:hidden">
+
+      {/* Search & Action Bar */}
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-neutral-900/30 p-4 rounded-[1.5rem] border border-neutral-800 print:hidden">
         <div>
           <h2 className="text-xl font-black uppercase tracking-tighter text-white">Registre des Opérations</h2>
           <p className="text-[10px] text-neutral-500 mt-0.5 uppercase tracking-widest font-bold">
-            {isAgent ? `Vue : Aujourd'hui uniquement` : 'Historique Complet'}
+            {isAgent && !startDate ? `Vue : Aujourd'hui (Utilisez les filtres pour l'historique)` : 'Historique & Recherche'}
           </p>
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto">
+        <div className="flex flex-col md:flex-row gap-3 w-full xl:w-auto">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`p-2.5 rounded-xl transition-all shadow-md active:scale-95 border flex items-center gap-2 text-[10px] font-black uppercase tracking-widest ${showFilters ? 'bg-red-700 text-white border-red-800' : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:text-white'}`}
+          >
+            <Filter className="w-4 h-4" /> Filtres
+          </button>
+
           <button
             onClick={() => window.print()}
-            className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl transition-all shadow-md active:scale-95 border border-neutral-700"
+            className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl transition-all shadow-md active:scale-95 border border-neutral-700 w-12 flex justify-center"
             title="Imprimer"
           >
             <PrinterIcon className="w-4 h-4" />
           </button>
+
           <div className="relative flex-1 md:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-600" />
             <input
@@ -82,6 +117,55 @@ const Journal: React.FC<JournalProps> = ({ store }) => {
         </div>
       </div>
 
+      {/* Filters Panel */}
+      {showFilters && (
+        <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-[1.5rem] grid grid-cols-1 md:grid-cols-4 gap-4 animate-in slide-in-from-top-2 print:hidden">
+          <div className="space-y-1">
+            <label className="text-[9px] font-black text-neutral-500 uppercase tracking-widest px-1">Date Début</label>
+            <input
+              type="date"
+              className="w-full bg-neutral-950 border border-neutral-800 p-2.5 rounded-xl text-xs font-bold text-white focus:border-red-600 outline-none"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[9px] font-black text-neutral-500 uppercase tracking-widest px-1">Date Fin</label>
+            <input
+              type="date"
+              className="w-full bg-neutral-950 border border-neutral-800 p-2.5 rounded-xl text-xs font-bold text-white focus:border-red-600 outline-none"
+              value={endDate}
+              onChange={e => setEndDate(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[9px] font-black text-neutral-500 uppercase tracking-widest px-1">Véhicule</label>
+            <select
+              className="w-full bg-neutral-950 border border-neutral-800 p-2.5 rounded-xl text-xs font-bold text-white focus:border-red-600 outline-none"
+              value={selectedVehicleId}
+              onChange={e => setSelectedVehicleId(e.target.value)}
+            >
+              <option value="">Tous les véhicules</option>
+              {store.vehicles.filter(v => !v.isArchived).map(v => (
+                <option key={v.id} value={v.id}>{v.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[9px] font-black text-neutral-500 uppercase tracking-widest px-1">Type Opération</label>
+            <select
+              className="w-full bg-neutral-950 border border-neutral-800 p-2.5 rounded-xl text-xs font-bold text-white focus:border-red-600 outline-none"
+              value={selectedType}
+              onChange={e => setSelectedType(e.target.value)}
+            >
+              <option value="">Tout</option>
+              <option value="MAINTENANCE">Entretiens Uniquement</option>
+              <option value="OTHER">Autres (Revenus/Frais)</option>
+            </select>
+          </div>
+        </div>
+      )}
+
       {isAgent && (
         <div className="bg-amber-950/20 border border-amber-900/40 p-4 rounded-[1.5rem] flex items-center gap-4 shadow-lg print:hidden">
           <div className="p-2 bg-amber-900/30 rounded-xl">
@@ -92,6 +176,16 @@ const Journal: React.FC<JournalProps> = ({ store }) => {
           </p>
         </div>
       )}
+
+      {/* Print Header Filters Summary */}
+      <div className="hidden print:block mb-4 border-b border-black pb-2">
+        <p className="text-[10px] uppercase font-bold text-black">
+          Filtres appliqués:
+          {startDate || endDate ? ` Du ${startDate || 'Début'} au ${endDate || 'Fin'}` : ' Toutes dates'}
+          {selectedVehicleId && ` • Véhicule: ${store.vehicles.find(v => v.id === selectedVehicleId)?.name}`}
+          {selectedType && ` • Type: ${selectedType === 'MAINTENANCE' ? 'Entretiens' : 'Autres'}`}
+        </p>
+      </div>
 
       <div className="bg-neutral-900 border border-neutral-800 rounded-[2rem] overflow-hidden shadow-xl backdrop-blur-sm print:bg-white print:border-none print:shadow-none">
         <div className="overflow-x-auto">
@@ -211,7 +305,7 @@ const Journal: React.FC<JournalProps> = ({ store }) => {
                       <div className="w-12 h-12 bg-neutral-950 rounded-xl flex items-center justify-center mb-3 border border-neutral-800">
                         <Search className="w-5 h-5 text-neutral-800" />
                       </div>
-                      <p className="text-neutral-700 text-[9px] font-black uppercase tracking-[0.3em]">Aucune transaction</p>
+                      <p className="text-neutral-700 text-[9px] font-black uppercase tracking-[0.3em]">Aucune transaction correspondante</p>
                     </div>
                   </td>
                 </tr>

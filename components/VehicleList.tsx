@@ -1,4 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+
+
 import { useFleetStore } from '../store.ts';
 import { UserRole, Vehicle, MaintenanceConfig, EntryType, MaintenanceStatus, FinancialEntry } from '../types.ts';
 import { MAINTENANCE_TYPES, CURRENCY } from '../constants.ts';
@@ -432,6 +435,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
   const netProfit = totalRevenue - totalExpenses;
 
   const monthsActive = Math.max(1, Math.floor((new Date().getTime() - new Date(vehicle.registrationDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
+  const monthlyProfit = netProfit / monthsActive;
 
   // New Calculation logic requested:
   // "pour la simulation on prend le prix d'achat du véhicule puis on diminue le prix de vente" -> This sounds like Gain/Loss on vehicle value.
