@@ -69,6 +69,7 @@ const VehicleList: React.FC<VehicleListProps> = ({ store }) => {
                 <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.2em] print:text-black">Parc Automobile</th>
                 <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.2em] hidden md:table-cell print:table-cell print:text-black">Mise en Circ.</th>
                 <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.2em] print:text-black">Kilométrage Actuel</th>
+                <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-right print:text-black">Bénéfice</th>
                 <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.2em] hidden lg:table-cell text-center print:hidden">Alertes</th>
                 <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-right print:hidden">Action</th>
               </tr>
@@ -76,6 +77,11 @@ const VehicleList: React.FC<VehicleListProps> = ({ store }) => {
             <tbody className="divide-y divide-neutral-800 print:divide-neutral-200">
               {activeVehicles.map(vehicle => {
                 const alertCount = (vehicle.maintenanceConfigs || []).filter(cfg => ((cfg.nextDueKm ?? 0) - (vehicle.lastMileage ?? 0)) < 1000).length;
+
+                const vehicleEntries = store.entries.filter((e: FinancialEntry) => e.vehicleId === vehicle.id && e.status !== MaintenanceStatus.REJECTED);
+                const vRevenue = vehicleEntries.filter((e: FinancialEntry) => e.type === EntryType.REVENUE).reduce((sum: number, e: FinancialEntry) => sum + (e.amount || 0), 0);
+                const vExpenses = vehicleEntries.filter((e: FinancialEntry) => e.type !== EntryType.REVENUE).reduce((sum: number, e: FinancialEntry) => sum + (e.amount || 0), 0);
+                const vProfit = vRevenue - vExpenses;
 
                 return (
                   <tr
@@ -112,6 +118,14 @@ const VehicleList: React.FC<VehicleListProps> = ({ store }) => {
                             <span className="text-[7px] text-red-500 font-black uppercase print:text-black">{vehicle.mileageUpdatedBy}</span>
                           </div>
                         )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex flex-col items-end">
+                        <span className={`text-sm font-black ${vProfit >= 0 ? 'text-emerald-500' : 'text-red-500'} print:text-black`}>
+                          {vProfit.toLocaleString()}
+                        </span>
+                        <span className="text-[7px] font-bold text-neutral-500 uppercase tracking-widest">Exploitation</span>
                       </div>
                     </td>
                     <td className="px-4 py-3 hidden lg:table-cell text-center print:hidden">
@@ -432,20 +446,17 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
 
   const totalRevenue = revenueEntries.reduce((sum: number, e: FinancialEntry) => sum + (e.amount || 0), 0);
   const totalExpenses = expenseEntries.reduce((sum: number, e: FinancialEntry) => sum + (e.amount || 0), 0);
-  const netProfit = totalRevenue - totalExpenses;
+  const operatingProfit = totalRevenue - totalExpenses; // Bénéfice Exploitation
 
   const monthsActive = Math.max(1, Math.floor((new Date().getTime() - new Date(vehicle.registrationDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
-  const monthlyProfit = netProfit / monthsActive;
+  const monthlyProfit = operatingProfit / monthsActive;
 
-  // New Calculation logic requested:
-  // "pour la simulation on prend le prix d'achat du véhicule puis on diminue le prix de vente" -> This sounds like Gain/Loss on vehicle value.
-  // Gain on Sale = SalePrice - PurchasePrice.
-  // "la perte sera déduite du Marge Nette (Exploitation), si c'est un gain il sera ajouté a Marge Nette (Exploitation)"
-  // So: Total Simulated Profit = NetProfit(Exploitation) + (SimulatedSale - PurchasePrice)
-
+  // Simulation Logic
   const simulatedSaleVal = Number(simulatedResale) || 0;
-  const capitalGainLoss = simulatedSaleVal - vehicle.purchasePrice;
-  const totalProjectedProfit = netProfit + capitalGainLoss;
+  // Global Net = Operating Profit + (Sale Price - Purchase Price)
+  const saleDifference = simulatedSaleVal - vehicle.purchasePrice;
+  const globalNetProfit = operatingProfit + saleDifference;
+  const totalProjectedProfit = globalNetProfit;
   const projectedMonthlyProfit = totalProjectedProfit / monthsActive;
 
   const filteredEntries = entries.filter((e: FinancialEntry) => {
@@ -462,7 +473,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/95 backdrop-blur-xl overflow-hidden print:bg-white print:p-0 print:absolute print:inset-0">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-[2rem] w-full max-w-4xl h-full max-h-[80vh] flex flex-col relative overflow-hidden shadow-2xl print:h-auto print:border-none print:shadow-none print:rounded-none print:bg-white">
+      <div className="bg-neutral-900 border border-neutral-800 rounded-[2rem] w-full max-w-2xl h-full max-h-[85vh] flex flex-col relative overflow-hidden shadow-2xl print:h-auto print:border-none print:shadow-none print:rounded-none print:bg-white">
         {/* Premium Header */}
         <div className="relative shrink-0 border-b border-neutral-800 bg-neutral-950 px-6 py-6 overflow-hidden print:bg-white print:border-neutral-200">
           {/* Header Content */}
@@ -726,20 +737,20 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
           ) : (
             <div className="space-y-6">
               {/* Financial Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:grid-cols-2 print:gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:grid-cols-2 print:gap-4">
                 <div className="bg-neutral-950 p-6 rounded-[2rem] border border-neutral-800 relative overflow-hidden shadow-2xl print:bg-white print:border-neutral-300">
                   <div className="absolute top-0 right-0 p-4 opacity-5"><Calculator className="w-24 h-24 text-white print:hidden" /></div>
-                  <h3 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-4 print:text-black">Marge Nette (Exploitation)</h3>
-                  <p className={`text-4xl font-black mb-4 ${netProfit >= 0 ? 'text-emerald-500' : 'text-red-500'} print:text-black`}>
-                    {(netProfit ?? 0).toLocaleString()} <span className="text-lg text-neutral-600 print:text-neutral-500">{CURRENCY}</span>
+                  <h3 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-4 print:text-black">Bénéfice (Exploitation)</h3>
+                  <p className={`text-4xl font-black mb-4 ${operatingProfit >= 0 ? 'text-emerald-500' : 'text-red-500'} print:text-black`}>
+                    {(operatingProfit ?? 0).toLocaleString()} <span className="text-lg text-neutral-600 print:text-neutral-500">{CURRENCY}</span>
                   </p>
                   <div className="grid grid-cols-2 gap-4 mt-4 p-4 bg-neutral-900/50 rounded-2xl border border-neutral-800 print:bg-white print:border-neutral-300">
                     <div>
-                      <p className="text-[8px] uppercase font-black text-neutral-600 tracking-widest mb-1">Revenus</p>
+                      <p className="text-[8px] uppercase font-black text-neutral-600 tracking-widest mb-1">Entrées</p>
                       <p className="text-base font-black text-emerald-500 print:text-black">{(totalRevenue ?? 0).toLocaleString()}</p>
                     </div>
                     <div>
-                      <p className="text-[8px] uppercase font-black text-neutral-600 tracking-widest mb-1">Charges</p>
+                      <p className="text-[8px] uppercase font-black text-neutral-600 tracking-widest mb-1">Sorties</p>
                       <p className="text-base font-black text-red-500 print:text-black">{(totalExpenses ?? 0).toLocaleString()}</p>
                     </div>
                   </div>
@@ -747,7 +758,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
 
                 <div className="bg-neutral-950 p-6 rounded-[2rem] border border-neutral-800 flex flex-col justify-center shadow-2xl print:bg-white print:border-neutral-300">
                   <div className="flex justify-between items-baseline mb-4">
-                    <h3 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest print:text-black">Rentabilité Mensuelle Moyen.</h3>
+                    <h3 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest print:text-black">Rentabilité Mensuelle</h3>
                     <span className="text-[8px] bg-neutral-900 px-2 py-1 rounded-full font-black text-neutral-400 uppercase tracking-widest print:hidden">{monthsActive} Mois</span>
                   </div>
                   <p className={`text-3xl font-black ${monthlyProfit >= 0 ? 'text-emerald-500' : 'text-red-500'} print:text-black`}>
@@ -764,72 +775,95 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                 <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-900/10 rounded-full blur-[80px] pointer-events-none"></div>
 
                 <h3 className="text-lg font-black text-white uppercase tracking-tighter mb-6 flex items-center gap-2">
-                  <Calculator className="w-5 h-5 text-emerald-500" /> Simulation de Vente & Clôture
+                  <Calculator className="w-5 h-5 text-emerald-500" /> Simulation Vente & Clôture
                 </h3>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-end">
-                  <div className="space-y-2">
-                    <label className="text-[9px] font-black text-neutral-500 uppercase tracking-widest px-1">Prix de Vente Simulé ({CURRENCY})</label>
-                    <input
-                      type="number"
-                      className="w-full bg-neutral-900 border border-neutral-800 p-4 rounded-xl text-xl font-black text-white outline-none focus:border-emerald-500 transition-all shadow-inner"
-                      placeholder="0"
-                      value={simulatedResale}
-                      onChange={(e) => setSimulatedResale(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="bg-neutral-900 p-4 rounded-2xl border border-neutral-800">
-                    <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest mb-2">Simul. Résultat Global</p>
-                    <div className={`text-2xl font-black ${totalProjectedProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                      {(totalProjectedProfit).toLocaleString()} <span className="text-xs text-neutral-600">{CURRENCY}</span>
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-neutral-500 uppercase tracking-widest px-1">Prix Achat Véhicule</label>
+                      <div className="p-3 bg-neutral-900 rounded-xl border border-neutral-800 text-white font-bold">
+                        {vehicle.purchasePrice.toLocaleString()} {CURRENCY}
+                      </div>
                     </div>
-                    <p className="text-[8px] text-neutral-500 mt-1 mb-2 font-bold">
-                      Rentab. Moyenne: <span className="text-white">{(projectedMonthlyProfit).toLocaleString()} {CURRENCY}/Mois</span>
-                    </p>
-                    <div className="flex items-center gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-neutral-500 uppercase tracking-widest px-1">Prix de Vente Simulé</label>
                       <input
-                        type="checkbox"
-                        id="saveSim"
-                        checked={vehicle.simulatedSalePrice === Number(simulatedResale)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            store.updateVehicle({ ...vehicle, simulatedSalePrice: Number(simulatedResale) });
-                          } else {
-                            store.updateVehicle({ ...vehicle, simulatedSalePrice: undefined });
-                          }
-                        }}
-                        className="w-3 h-3 accent-red-600"
+                        type="number"
+                        className="w-full bg-neutral-900 border border-neutral-800 p-3 rounded-xl text-xl font-black text-white outline-none focus:border-emerald-500 transition-all shadow-inner"
+                        placeholder="0"
+                        value={simulatedResale}
+                        onChange={(e) => setSimulatedResale(e.target.value)}
                       />
-                      <label htmlFor="saveSim" className="text-[8px] text-neutral-400 font-bold uppercase cursor-pointer">Sauvegarder la simulation</label>
                     </div>
                   </div>
 
-                  <div>
+                  <div className="bg-neutral-900 p-4 rounded-2xl border border-neutral-800 lg:col-span-2">
+                    <div className="grid grid-cols-2 gap-4 mb-4 border-b border-neutral-800 pb-4">
+                      <div>
+                        <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest mb-1">Resultat Vente</p>
+                        <p className={`text-base font-black ${saleDifference >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                          {saleDifference > 0 ? '+' : ''}{saleDifference.toLocaleString()} {CURRENCY}
+                        </p>
+                        <p className="text-[8px] text-neutral-500">
+                          {saleDifference >= 0 ? '(Plus-value)' : '(Perte sur vente)'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest mb-1">Bénéfice Net Global</p>
+                        <div className={`text-2xl font-black ${globalNetProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                          {(globalNetProfit).toLocaleString()} <span className="text-xs text-neutral-600">{CURRENCY}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <p className="text-[9px] text-neutral-500 font-bold max-w-[60%]">
+                        Le Bénéfice Net Global inclut le résultat d'exploitation et le résultat de la vente simulée.
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <label htmlFor="saveSim" className="text-[9px] font-black uppercase text-neutral-400 cursor-pointer">Sauvegarder Simulation</label>
+                        <input
+                          type="checkbox"
+                          id="saveSim"
+                          className="w-4 h-4 accent-red-600"
+                          checked={vehicle.simulatedSalePrice === Number(simulatedResale)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              store.updateVehicle({ ...vehicle, simulatedSalePrice: Number(simulatedResale) });
+                            } else {
+                              store.updateVehicle({ ...vehicle, simulatedSalePrice: undefined });
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                  </div>
+
+                  <div className="lg:col-span-3">
                     <button
                       onClick={() => {
                         if (!simulatedResale || Number(simulatedResale) <= 0) {
                           alert("Veuillez saisir un prix de vente valide.");
                           return;
                         }
-                        if (confirm(`ATTENTION: ACTION IRRÉVERSIBLE.\n\nVous êtes sur le point de vendre le véhicule "${vehicle.name}" pour ${Number(simulatedResale).toLocaleString()} DA.\n\nLe véhicule sera ARCHIVÉ et ne pourra plus recevoir de nouvelles opérations.\nUne entrée de REVENU correspondant à la vente sera ajoutée.\n\nContinuer ?`)) {
-                          // 1. Update Vehicle (Archive + Sale Price)
+                        if (confirm(`ATTENTION: ACTION IRRÉVERSIBLE.\n\nVous êtes sur le point de vendre le véhicule "${vehicle.name}" pour ${Number(simulatedResale).toLocaleString()} DA.\n\nLe véhicule sera ARCHIVÉ.\nUne entrée de REVENU correspondant à la vente sera ajoutée.\n\nContinuer ?`)) {
                           store.updateVehicle({
                             ...vehicle,
                             isArchived: true,
                             salePrice: Number(simulatedResale)
                           });
 
-                          // 2. Add Sale Revenue Entry
                           store.addEntry({
                             id: `sale-${Date.now()}`,
                             vehicleId: vehicle.id,
                             date: new Date().toISOString(),
                             amount: Number(simulatedResale),
-                            type: 'REVENUE', // EntryType.REVENUE
+                            type: EntryType.REVENUE,
                             description: `Vente Véhicule : ${vehicle.name}`,
                             agentName: store.currentUser?.name || 'Admin',
-                            status: 'APPROVED'
+                            status: MaintenanceStatus.APPROVED
                           });
 
                           alert("Véhicule vendu et archivé avec succès.");

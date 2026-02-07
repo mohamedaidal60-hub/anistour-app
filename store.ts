@@ -269,10 +269,10 @@ export function useFleetStore() {
     const revenue = validEntries.filter(e => e.type === EntryType.REVENUE).reduce((sum, e) => sum + (e.amount || 0), 0);
     const vehicleExpenses = validEntries.filter(e => e.type !== EntryType.REVENUE && e.type !== EntryType.FUNDING).reduce((sum, e) => sum + (e.amount || 0), 0);
     const globalTotal = globalExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-    const purchaseTotal = vehicles.reduce((sum, v) => sum + (v.purchasePrice || 0), 0);
+    const purchaseTotalOfSold = vehicles.filter(v => v.isArchived).reduce((sum, v) => sum + (v.purchasePrice || 0), 0);
     const salesTotal = vehicles.filter(v => v.isArchived).reduce((sum, v) => sum + (v.salePrice || 0), 0);
     const totalExpenses = vehicleExpenses + globalTotal;
-    const netProfit = revenue - totalExpenses - (purchaseTotal - salesTotal);
+    const netProfit = revenue - totalExpenses + (salesTotal - purchaseTotalOfSold);
 
     const activeVehicles = vehicles.filter(v => !v.isArchived);
     const costPerVehicle = activeVehicles.length > 0 ? (globalTotal / activeVehicles.length) : 0;

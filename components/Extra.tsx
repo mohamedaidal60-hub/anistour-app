@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useFleetStore } from '../store.ts';
-import { Vehicle, VehicleDocument, EntryType, FinancialEntry } from '../types.ts';
+import { Vehicle, VehicleDocument, EntryType, FinancialEntry, MaintenanceStatus } from '../types.ts';
 import {
     PieChart, BarChart, FileText, Filter, AlertTriangle,
-    Calendar, CheckCircle, Clock, TrendingUp, TrendingDown, DollarSign
+    Calendar, CheckCircle, Clock, TrendingUp, TrendingDown, DollarSign,
+    X, Camera, Upload
 } from 'lucide-react';
 import { CURRENCY } from '../constants.ts';
 
@@ -16,30 +17,52 @@ const Extra: React.FC<ExtraProps> = ({ store }) => {
     const [activeTab, setActiveTab] = useState<'BI' | 'GED'>('BI');
     const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
 
+    // Form State for Adding Document
+    const [showDocForm, setShowDocForm] = useState(false);
+    const [newDocType, setNewDocType] = useState('');
+    const [newDocDate, setNewDocDate] = useState('');
+    const [newDocPhoto, setNewDocPhoto] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     // --- GED Logic ---
     const handleAddDocument = (vId: string) => {
-        // Ideally this would open a modal, for now we simulate adding standard docs
+        if (!newDocType || !newDocDate) {
+            alert("Veuillez remplir le type et la date d'expiration.");
+            return;
+        }
+
         const vehicle = store.vehicles.find(v => v.id === vId);
         if (!vehicle) return;
 
-        const docType = prompt("Type de document (Assurance, Contrôle Tech, Vignette...)");
-        if (!docType) return;
-
-        const dateStr = prompt("Date d'expiration (YYYY-MM-DD)");
-        if (!dateStr) return;
-
         const newDoc: VehicleDocument = {
             id: Date.now().toString(),
-            type: docType,
-            expirationDate: dateStr,
+            type: newDocType,
+            expirationDate: newDocDate,
+            photo: newDocPhoto || undefined,
             alertDaysBefore: 30
         };
 
         const updatedDocs = [...(vehicle.documents || []), newDoc];
         store.updateVehicle({ ...vehicle, documents: updatedDocs });
+
+        // Reset & Close
+        setNewDocType('');
+        setNewDocDate('');
+        setNewDocPhoto(null);
+        setShowDocForm(false);
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => setNewDocPhoto(reader.result as string);
+            reader.readAsDataURL(file);
+        }
     };
 
     const removeDocument = (vId: string, docId: string) => {
+        if (!confirm("Voulez-vous supprimer ce document ?")) return;
         const vehicle = store.vehicles.find(v => v.id === vId);
         if (!vehicle) return;
         const updatedDocs = (vehicle.documents || []).filter(d => d.id !== docId);
@@ -50,16 +73,24 @@ const Extra: React.FC<ExtraProps> = ({ store }) => {
     const activeVehicles = store.vehicles.filter(v => !v.isArchived);
 
     // Calculate profitability per vehicle
-    const vehicleStats = activeVehicles.map(v => {
-        const vEntries = store.entries.filter(e => e.vehicleId === v.id);
+    const vehicleStats = store.vehicles.map(v => {
+        const vEntries = store.entries.filter(e => e.vehicleId === v.id && e.status !== MaintenanceStatus.REJECTED);
         const revenue = vEntries.filter(e => e.type === EntryType.REVENUE).reduce((sum, e) => sum + (e.amount || 0), 0);
         const expenses = vEntries.filter(e => e.type !== EntryType.REVENUE).reduce((sum, e) => sum + (e.amount || 0), 0);
-        const net = revenue - expenses;
-        const km = v.lastMileage || 1; // avoid div by 0
+
+        // Marge Exploitation = Rev - Exp
+        const operatingProfit = revenue - expenses;
+
+        // Gain/Perte Asset = Sale - Purchase (only if archived/sold)
+        const assetResult = v.isArchived ? (v.salePrice || 0) - v.purchasePrice : 0;
+
+        const net = operatingProfit + assetResult;
+
+        const km = v.lastMileage || 1;
         const costPerKm = expenses / km;
         const profitPerKm = net / km;
 
-        return { ...v, revenue, expenses, net, costPerKm, profitPerKm };
+        return { ...v, revenue, expenses, net, operatingProfit, assetResult, costPerKm, profitPerKm };
     });
 
     const bestPerformer = [...vehicleStats].sort((a, b) => b.net - a.net)[0];
@@ -111,11 +142,19 @@ const Extra: React.FC<ExtraProps> = ({ store }) => {
 
                         <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-[2rem] relative overflow-hidden">
                             <div className="absolute top-0 right-0 p-4 opacity-5"><DollarSign className="w-16 h-16 text-white" /></div>
-                            <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest">Coût Moyen / KM (Flotte)</p>
+                            <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest">Coût Moyen / KM (Actifs)</p>
                             <p className="text-2xl font-black text-white mt-2">
-                                {activeVehicles.length > 0 ?
-                                    (vehicleStats.reduce((sum, v) => sum + v.costPerKm, 0) / activeVehicles.length).toFixed(2)
+                                {store.vehicles.filter(v => !v.isArchived).length > 0 ?
+                                    (vehicleStats.filter(v => !v.isArchived).reduce((sum, v) => sum + v.costPerKm, 0) / store.vehicles.filter(v => !v.isArchived).length).toFixed(2)
                                     : 0} <span className="text-sm text-neutral-600">DA/KM</span>
+                            </p>
+                        </div>
+
+                        <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-[2rem] relative overflow-hidden bg-gradient-to-br from-emerald-900/10 to-transparent">
+                            <div className="absolute top-0 right-0 p-4 opacity-10"><DollarSign className="w-16 h-16 text-emerald-500" /></div>
+                            <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest">Profit Net Global (Flotte + Ventes)</p>
+                            <p className="text-2xl font-black text-emerald-500 mt-2">
+                                {vehicleStats.reduce((sum, v) => sum + v.net, 0).toLocaleString()} <span className="text-sm text-neutral-600">DA</span>
                             </p>
                         </div>
                     </div>
@@ -130,19 +169,36 @@ const Extra: React.FC<ExtraProps> = ({ store }) => {
                                 <thead className="bg-neutral-950 text-neutral-500 text-[9px] font-black uppercase tracking-widest border-b border-neutral-800">
                                     <tr>
                                         <th className="px-6 py-4">Véhicule</th>
-                                        <th className="px-6 py-4 text-right">Revenus</th>
-                                        <th className="px-6 py-4 text-right">Charges</th>
-                                        <th className="px-6 py-4 text-right">Net</th>
+                                        <th className="px-6 py-4">État</th>
+                                        <th className="px-6 py-4 text-right">Marge Exploit.</th>
+                                        <th className="px-6 py-4 text-right">Résultat Vente</th>
+                                        <th className="px-6 py-4 text-right">Net Global</th>
                                         <th className="px-6 py-4 text-right">Coût/KM</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-neutral-800">
                                     {vehicleStats.map(v => (
                                         <tr key={v.id} className="hover:bg-neutral-800/50 transition-colors">
-                                            <td className="px-6 py-4 font-bold text-xs text-white uppercase">{v.name}</td>
-                                            <td className="px-6 py-4 text-right text-xs font-bold text-emerald-500">+{v.revenue.toLocaleString()}</td>
-                                            <td className="px-6 py-4 text-right text-xs font-bold text-red-500">-{v.expenses.toLocaleString()}</td>
-                                            <td className={`px-6 py-4 text-right text-xs font-black ${v.net >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{v.net.toLocaleString()}</td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-xs text-white uppercase">{v.name}</span>
+                                                    <span className="text-[8px] text-neutral-600 font-bold uppercase">{v.registrationNumber}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${v.isArchived ? 'bg-neutral-800 text-neutral-400' : 'bg-red-900/20 text-red-500'}`}>
+                                                    {v.isArchived ? 'Vendu' : 'En Service'}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-xs font-bold text-emerald-500">
+                                                {v.operatingProfit.toLocaleString()}
+                                            </td>
+                                            <td className={`px-6 py-4 text-right text-xs font-bold ${v.assetResult >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                {v.isArchived ? (v.assetResult > 0 ? '+' : '') + v.assetResult.toLocaleString() : '-'}
+                                            </td>
+                                            <td className={`px-6 py-4 text-right text-xs font-black p-4 rounded-xl ${v.net >= 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
+                                                {v.net.toLocaleString()}
+                                            </td>
                                             <td className="px-6 py-4 text-right text-xs text-neutral-400">{v.costPerKm.toFixed(2)}</td>
                                         </tr>
                                     ))}
@@ -161,7 +217,10 @@ const Extra: React.FC<ExtraProps> = ({ store }) => {
                             {activeVehicles.map(v => (
                                 <button
                                     key={v.id}
-                                    onClick={() => setSelectedVehicleId(v.id)}
+                                    onClick={() => {
+                                        setSelectedVehicleId(v.id);
+                                        setShowDocForm(false);
+                                    }}
                                     className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${selectedVehicleId === v.id ? 'bg-neutral-800 text-white shadow-lg' : 'text-neutral-400 hover:bg-neutral-900 hover:text-neutral-200'}`}
                                 >
                                     <div className="w-8 h-8 rounded-lg bg-neutral-950 border border-neutral-800 overflow-hidden">
@@ -192,15 +251,80 @@ const Extra: React.FC<ExtraProps> = ({ store }) => {
                                                 <h2 className="text-xl font-black text-white uppercase tracking-tighter">{v.name}</h2>
                                                 <p className="text-xs text-neutral-500 font-bold uppercase tracking-widest mt-1">Dossier Administratif</p>
                                             </div>
-                                            <button
-                                                onClick={() => handleAddDocument(v.id)}
-                                                className="px-4 py-2 bg-neutral-100 hover:bg-white text-neutral-950 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95"
-                                            >
-                                                + Ajouter Document
-                                            </button>
+                                            {!showDocForm && (
+                                                <button
+                                                    onClick={() => setShowDocForm(true)}
+                                                    className="px-4 py-2 bg-neutral-100 hover:bg-white text-neutral-950 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95"
+                                                >
+                                                    + Ajouter Document
+                                                </button>
+                                            )}
                                         </div>
 
-                                        {docs.length === 0 ? (
+                                        {showDocForm ? (
+                                            <div className="bg-neutral-950 border border-neutral-800 p-6 rounded-[2rem] animate-in zoom-in-95 duration-300">
+                                                <h3 className="text-sm font-black text-white uppercase tracking-widest mb-4">Nouveau Document</h3>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="space-y-1">
+                                                        <label className="text-[9px] font-black text-neutral-500 uppercase tracking-widest px-1">Type de Document</label>
+                                                        <input
+                                                            type="text"
+                                                            placeholder="ex: Assurance, Vignette..."
+                                                            className="w-full bg-neutral-900 border border-neutral-800 p-3 rounded-xl text-xs font-bold text-white focus:border-red-600 outline-none"
+                                                            value={newDocType}
+                                                            onChange={(e) => setNewDocType(e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <label className="text-[9px] font-black text-neutral-500 uppercase tracking-widest px-1">Date d'Expiration</label>
+                                                        <input
+                                                            type="date"
+                                                            className="w-full bg-neutral-900 border border-neutral-800 p-3 rounded-xl text-xs font-bold text-white focus:border-red-600 outline-none"
+                                                            value={newDocDate}
+                                                            onChange={(e) => setNewDocDate(e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1 md:col-span-2">
+                                                        <label className="text-[9px] font-black text-neutral-500 uppercase tracking-widest px-1">Scan / Photo Document</label>
+                                                        <div
+                                                            onClick={() => fileInputRef.current?.click()}
+                                                            className="w-full h-32 bg-neutral-900 border-2 border-dashed border-neutral-800 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-red-600 transition-all group overflow-hidden"
+                                                        >
+                                                            {newDocPhoto ? (
+                                                                <img src={newDocPhoto} className="w-full h-full object-contain" />
+                                                            ) : (
+                                                                <>
+                                                                    <Upload className="w-6 h-6 text-neutral-600 group-hover:scale-110 transition-transform mb-2" />
+                                                                    <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest">Cliquez pour scanner/importer</p>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                        <input
+                                                            type="file"
+                                                            ref={fileInputRef}
+                                                            accept="image/*"
+                                                            capture="environment"
+                                                            className="hidden"
+                                                            onChange={handleFileChange}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="flex justify-end gap-2 mt-6">
+                                                    <button
+                                                        onClick={() => setShowDocForm(false)}
+                                                        className="px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-neutral-500 hover:text-white transition-colors"
+                                                    >
+                                                        Annuler
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleAddDocument(v.id)}
+                                                        className="px-6 py-2 bg-red-700 hover:bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95"
+                                                    >
+                                                        Enregistrer
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : docs.length === 0 ? (
                                             <div className="py-20 flex flex-col items-center justify-center border-2 border-dashed border-neutral-800 rounded-[2rem] opacity-50">
                                                 <FileText className="w-10 h-10 text-neutral-700 mb-4" />
                                                 <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500">Aucun document tracé</p>
@@ -220,6 +344,12 @@ const Extra: React.FC<ExtraProps> = ({ store }) => {
                                                                 </div>
                                                                 <button onClick={() => removeDocument(v.id, doc.id)} className="text-neutral-600 hover:text-red-500 transition-colors"><X className="w-4 h-4" /></button>
                                                             </div>
+
+                                                            {doc.photo && (
+                                                                <div className="w-full h-32 mb-4 bg-neutral-900 rounded-xl overflow-hidden border border-neutral-800">
+                                                                    <img src={doc.photo} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                                                                </div>
+                                                            )}
 
                                                             <h4 className="text-xs font-black text-white uppercase tracking-tight mb-1">{doc.type}</h4>
                                                             <p className="text-[9px] text-neutral-500 font-bold uppercase tracking-widest mb-4">Expire le {new Date(doc.expirationDate).toLocaleDateString()}</p>
@@ -247,8 +377,5 @@ const Extra: React.FC<ExtraProps> = ({ store }) => {
         </div>
     );
 };
-
-// Internal Import for X Icon
-import { X } from 'lucide-react';
 
 export default Extra;
