@@ -13,10 +13,9 @@ import {
   ListOrdered,
   X,
   Wallet,
-  MoreVertical,
+  TrendingUp,
   ChevronLeft,
-  ChevronRight,
-  TrendingUp
+  ChevronRight
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -49,48 +48,47 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, role, userNa
   ];
 
   return (
-    <aside className={`${isCollapsed ? 'w-20' : 'w-72'} bg-neutral-950 border-r border-neutral-800 flex flex-col h-screen shrink-0 transition-all duration-300 relative overflow-hidden`}>
+    <aside className={`${isCollapsed ? 'w-16' : 'w-60'} bg-neutral-950 border-r border-neutral-800 flex flex-col h-screen shrink-0 transition-all duration-300 relative overflow-hidden print:hidden`}>
       {/* Toggle Button */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute top-6 -right-3 z-50 w-6 h-6 bg-neutral-800 border border-neutral-700 rounded-full flex items-center justify-center text-neutral-400 hover:text-white hover:bg-neutral-700 transition-all shadow-xl"
+        className="absolute top-4 -right-3 z-50 w-5 h-5 bg-neutral-800 border border-neutral-700 rounded-full flex items-center justify-center text-neutral-400 hover:text-white hover:bg-neutral-700 transition-all shadow-md"
       >
-        {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+        {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
       </button>
 
-      <div className={`${isCollapsed ? 'p-2' : 'p-6'} shrink-0 relative flex flex-col items-center`}>
+      <div className={`${isCollapsed ? 'p-2' : 'p-4'} shrink-0 relative flex flex-col items-center`}>
         {onClose && (
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 lg:hidden p-2 text-neutral-500 hover:text-white"
+            className="absolute top-2 right-2 lg:hidden p-1 text-neutral-500 hover:text-white"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
         )}
 
-        <div className={`${isCollapsed ? 'w-12 h-12 mb-4 p-2' : 'w-32 h-32 mb-6 p-4'} relative rounded-xl overflow-hidden border border-neutral-800 shadow-2xl bg-neutral-950 flex items-center justify-center transition-all duration-300`}>
+        <div className={`${isCollapsed ? 'w-8 h-8 mb-2 p-1' : 'w-24 h-24 mb-4 p-2'} relative rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950 flex items-center justify-center transition-all duration-300`}>
           {appLogo ? (
-            <img src="/logo.png" alt="Anistour Logo" className="w-full h-full object-contain" />
+            <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
           ) : (
-            <div className="text-red-600 font-bold text-[8px] sm:text-[10px] text-center uppercase tracking-tighter">
-              Anistour<br />Fleet
+            <div className="text-red-600 font-bold text-[8px] text-center uppercase tracking-tighter">
+              AF
             </div>
           )}
         </div>
 
         {!isCollapsed && (
-          <div className="w-full p-4 bg-neutral-900/50 rounded-[1.5rem] border border-neutral-800 shadow-inner">
-            <p className="text-[8px] text-neutral-600 uppercase font-black tracking-[0.2em] mb-1">Session Active</p>
-            <p className="text-xs font-black truncate text-neutral-100 uppercase tracking-tight">{userName}</p>
+          <div className="w-full p-3 bg-neutral-900/50 rounded-xl border border-neutral-800">
+            <p className="text-[9px] font-black truncate text-neutral-300 uppercase tracking-tight text-center">{userName}</p>
           </div>
         )}
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto custom-scrollbar">
-        {menuItems.filter(item => item.roles.includes(role)).map(item => {
+      <nav className="flex-1 px-2 py-2 space-y-1 overflow-y-auto custom-scrollbar">
+        {menuItems.filter(item => item.roles.includes(role)).map((item) => {
           const isValidation = item.id === 'validation';
           const isNotif = item.id === 'notifications';
-          const pendingCount = store.entries.filter(e => e.status === 'PENDING').length;
+          const pendingCount = store.entries.filter((e: any) => e.status === 'PENDING').length;
           const notifCount = store.notifications.filter((n: any) => !n.isArchived).length;
 
           return (
@@ -98,36 +96,36 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, role, userNa
               key={item.id}
               onClick={() => setActiveTab(item.id)}
               title={isCollapsed ? item.label : ''}
-              className={`w-full flex items-center ${isCollapsed ? 'justify-center p-3' : 'justify-between px-5 py-3.5'} rounded-2xl text-[13px] font-black uppercase tracking-widest transition-all group ${activeTab === item.id
-                ? 'bg-red-700 text-white shadow-xl shadow-red-900/30'
-                : 'text-neutral-500 hover:bg-neutral-900/80 hover:text-neutral-200'
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2' : 'justify-between px-3 py-2.5'} rounded-xl text-[11px] font-bold uppercase tracking-wide transition-all group ${activeTab === item.id
+                ? 'bg-red-700 text-white shadow-lg shadow-red-900/20'
+                : 'text-neutral-500 hover:bg-neutral-900 hover:text-neutral-300'
                 }`}
             >
               <div className="flex items-center">
-                <item.icon className={`shrink-0 ${isCollapsed ? 'w-6 h-6' : 'w-4 h-4 mr-4'} transition-all`} />
+                <item.icon className={`shrink-0 ${isCollapsed ? 'w-4 h-4' : 'w-3.5 h-3.5 mr-3'} transition-all`} />
                 {!isCollapsed && <span>{item.label}</span>}
               </div>
               {!isCollapsed && (
-                <>
+                <div className="flex gap-1">
                   {isValidation && pendingCount > 0 && (
-                    <span className="bg-red-500 text-white text-[9px] px-2 py-0.5 rounded-lg font-black animate-pulse">{pendingCount}</span>
+                    <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded font-bold animate-pulse">{pendingCount}</span>
                   )}
                   {isNotif && notifCount > 0 && (
-                    <span className="bg-neutral-800 text-neutral-300 text-[9px] px-2 py-0.5 rounded-lg font-black border border-neutral-700">{notifCount}</span>
+                    <span className="bg-neutral-800 text-neutral-400 text-[9px] px-1.5 py-0.5 rounded font-bold border border-neutral-700">{notifCount}</span>
                   )}
-                </>
+                </div>
               )}
             </button>
           );
         })}
       </nav>
 
-      <div className={`${isCollapsed ? 'p-2' : 'p-4'} border-t border-neutral-900 bg-neutral-950`}>
+      <div className={`${isCollapsed ? 'p-2' : 'p-3'} border-t border-neutral-900 bg-neutral-950`}>
         <button
           onClick={onLogout}
-          className={`w-full flex items-center ${isCollapsed ? 'justify-center p-3' : 'px-5 py-3.5'} text-neutral-600 hover:text-red-500 rounded-2xl transition-all text-xs font-black uppercase tracking-widest group`}
+          className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2' : 'px-3 py-2.5'} text-neutral-600 hover:text-red-500 rounded-xl transition-all text-[10px] font-bold uppercase tracking-widest group`}
         >
-          <LogOut className={`${isCollapsed ? 'w-6 h-6' : 'w-4 h-4 mr-4'} group-hover:rotate-12 transition-transform`} />
+          <LogOut className={`${isCollapsed ? 'w-4 h-4' : 'w-3.5 h-3.5 mr-3'} group-hover:rotate-12 transition-transform`} />
           {!isCollapsed && 'Déconnexion'}
         </button>
       </div>

@@ -211,6 +211,18 @@ export function useFleetStore() {
     if (error) console.error("DB Error (Global Expense):", error);
   };
 
+  const updateGlobalExpense = async (ge: GlobalExpense) => {
+    setGlobalExpenses(prev => prev.map(e => e.id === ge.id ? ge : e));
+    const { error } = await supabase.from('global_expenses').update(ge).eq('id', ge.id);
+    if (error) console.error("DB Error (Update Global Expense):", error);
+  };
+
+  const deleteGlobalExpense = async (id: string) => {
+    setGlobalExpenses(prev => prev.filter(e => e.id !== id));
+    const { error } = await supabase.from('global_expenses').delete().eq('id', id);
+    if (error) console.error("DB Error (Delete Global Expense):", error);
+  };
+
   const updateVehicleMileage = async (vehicleId: string, newMileage: number, agentName: string) => {
     setVehicles(prev => prev.map(v => v.id === vehicleId ? { ...v, lastMileage: newMileage, mileageUpdatedBy: agentName } : v));
     await supabase.from('vehicles').update({ lastMileage: newMileage, mileageUpdatedBy: agentName }).eq('id', vehicleId);
@@ -284,7 +296,8 @@ export function useFleetStore() {
     vehicles, entries, globalExpenses, messages, notifications, users, cashDesks, appLogo, currentUser,
     isCloudSyncing, isDataLoaded, setCurrentUser,
     setAppLogo: (logo: string) => { setAppLogoState(logo); setLocal('logo', logo); },
-    addVehicle, updateVehicle, updateVehicleMileage, addEntry, addGlobalExpense,
+    addVehicle, updateVehicle, updateVehicleMileage, addEntry,
+    addGlobalExpense, updateGlobalExpense, deleteGlobalExpense,
     approveMaintenance, archiveNotification,
     rejectMaintenance: async (id: string) => {
       setEntries(prev => prev.map(e => e.id === id ? { ...e, status: MaintenanceStatus.REJECTED } : e));

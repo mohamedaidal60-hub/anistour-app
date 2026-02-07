@@ -138,6 +138,16 @@ const App: React.FC = () => {
         .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #0a0a0a; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #262626; border-radius: 10px; }
+
+        @media print {
+          aside, header, .no-print { display: none !important; }
+          .print-full-width { width: 100% !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; }
+          body, html, #root { overflow: visible !important; height: auto !important; background: white !important; color: black !important; }
+          * { text-shadow: none !important; box-shadow: none !important; }
+          .bg-neutral-950, .bg-neutral-900 { background: white !important; border: 1px solid #ddd !important; }
+          .text-white, .text-neutral-100 { color: black !important; }
+          .text-neutral-400, .text-neutral-500 { color: #555 !important; }
+        }
       `}</style>
     </div>
   );
