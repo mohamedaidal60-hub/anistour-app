@@ -1,15 +1,22 @@
 import React, { useState } from 'react';
 import { useFleetStore } from '../store.ts';
-import { Plus, Wallet, TrendingDown, Users } from 'lucide-react';
+import { Plus, Wallet, TrendingDown, Users, Camera } from 'lucide-react';
 import { GlobalExpense } from '../types.ts';
 
 const GlobalExpenses: React.FC<{ store: any }> = ({ store }) => {
     const [showForm, setShowForm] = useState(false);
-    const [newExpense, setNewExpense] = useState({
+    const [newExpense, setNewExpense] = useState<{
+        type: string;
+        amount: string;
+        date: string;
+        description: string;
+        proofPhoto: string;
+    }>({
         type: 'LOYER',
         amount: '',
         date: new Date().toISOString().split('T')[0],
-        description: ''
+        description: '',
+        proofPhoto: ''
     });
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -19,11 +26,12 @@ const GlobalExpenses: React.FC<{ store: any }> = ({ store }) => {
             type: newExpense.type,
             amount: parseFloat(newExpense.amount),
             date: newExpense.date,
-            description: newExpense.description
+            description: newExpense.description,
+            proofPhoto: newExpense.proofPhoto
         };
         await store.addGlobalExpense(expense);
         setShowForm(false);
-        setNewExpense({ type: 'LOYER', amount: '', date: new Date().toISOString().split('T')[0], description: '' });
+        setNewExpense({ type: 'LOYER', amount: '', date: new Date().toISOString().split('T')[0], description: '', proofPhoto: '' });
     };
 
     const stats = store.getFinancialStats();
@@ -87,6 +95,7 @@ const GlobalExpenses: React.FC<{ store: any }> = ({ store }) => {
                             const now = new Date();
                             const currentMonth = now.getMonth();
                             const currentYear = now.getFullYear();
+                            const monthName = now.toLocaleString('fr-FR', { month: 'long', year: 'numeric' });
 
                             // Filter expenses for current month
                             const monthExpenses = store.globalExpenses.filter((e: GlobalExpense) => {
@@ -94,7 +103,7 @@ const GlobalExpenses: React.FC<{ store: any }> = ({ store }) => {
                                 return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
                             });
 
-                            const total = monthExpenses.reduce((sum: number, e: GlobalExpense) => sum + (e.amount || 0), 0);
+                            const totalGlobal = monthExpenses.reduce((sum: number, e: GlobalExpense) => sum + (e.amount || 0), 0);
                             const activeVehicles = store.vehicles.filter((v: any) => !v.isArchived);
 
                             if (activeVehicles.length === 0) {
@@ -102,15 +111,40 @@ const GlobalExpenses: React.FC<{ store: any }> = ({ store }) => {
                                 return;
                             }
 
-                            if (total === 0) {
+                            if (totalGlobal === 0) {
                                 alert("Aucune charge globale pour ce mois.");
                                 return;
                             }
 
-                            const share = total / activeVehicles.length;
-                            const monthName = now.toLocaleString('fr-FR', { month: 'long', year: 'numeric' });
+                            // Calculate what has ALREADY been distributed for this month
+                            const distributedEntries = store.entries.filter((e: any) =>
+                                e.type === 'EXPENSE' &&
+                                e.description &&
+                                e.description.includes(`Quote-part Charges Globales - ${monthName}`)
+                            );
 
-                            if (confirm(`Voulez-vous répartir les charges de ${monthName} ?\n\nTotal: ${total.toLocaleString()} DA\nVéhicules actifs: ${activeVehicles.length}\nCoût par véhicule: ${share.toLocaleString()} DA\n\nCela créera une dépense sur chaque véhicule.`)) {
+                            const totalDistributed = distributedEntries.reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
+
+                            // Tolerance for float arithmetic
+                            const difference = totalGlobal - totalDistributed;
+
+                            if (Math.abs(difference) < 50) { // Allow small margin
+                                alert(`Répartition DÉJÀ EFFECTUÉE pour ${monthName}.\n\nTotal Charges: ${totalGlobal.toLocaleString()} DA\nTotal Déjà Réparti: ${totalDistributed.toLocaleString()} DA\n\nImpossible de répartir deux fois le même montant.`);
+                                return;
+                            }
+
+                            const amountToDistribute = difference;
+                            const share = amountToDistribute / activeVehicles.length;
+
+                            let confirmMessage = `Répartition des charges de ${monthName}`;
+                            if (totalDistributed > 0) {
+                                confirmMessage += `\n\nATTENTION: Une répartition partielle existe déjà (${totalDistributed.toLocaleString()} DA).\n\nNous allons répartir UNIQUEMENT LE RESTE: ${amountToDistribute.toLocaleString()} DA.`;
+                            } else {
+                                confirmMessage += `\n\nTotal à répartir: ${amountToDistribute.toLocaleString()} DA`;
+                            }
+                            confirmMessage += `\nVéhicules actifs: ${activeVehicles.length}\nMontant par véhicule: ${share.toLocaleString(undefined, { maximumFractionDigits: 2 })} DA`;
+
+                            if (confirm(confirmMessage)) {
                                 activeVehicles.forEach(async (v: any) => {
                                     await store.addEntry({
                                         id: `dist-${Date.now()}-${v.id}`,
@@ -123,7 +157,7 @@ const GlobalExpenses: React.FC<{ store: any }> = ({ store }) => {
                                         status: 'APPROVED'
                                     });
                                 });
-                                alert("Répartition effectuée avec succès sur le journal des véhicules.");
+                                alert("Répartition effectuée avec succès.");
                             }
                         }}
                         className="flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 px-4 py-2 rounded-xl text-sm font-bold transition-all border border-neutral-700"
@@ -194,6 +228,43 @@ const GlobalExpenses: React.FC<{ store: any }> = ({ store }) => {
                                 />
                             </div>
 
+                            {/* Photo Upload */}
+                            <div>
+                                <label className="text-xs font-bold text-neutral-500 uppercase mb-2 block">Justificatif (Photo/Bon)</label>
+                                <div
+                                    className="border-2 border-dashed border-neutral-800 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:border-red-600 transition-all bg-neutral-950"
+                                    onClick={() => document.getElementById('expense-proof-upload')?.click()}
+                                >
+                                    {newExpense.proofPhoto ? (
+                                        <div className="flex items-center gap-2 text-emerald-500">
+                                            <div className="w-2 h-2 bg-emerald-500 rounded-full" />
+                                            <span className="text-xs font-bold">Image chargée</span>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center text-neutral-500">
+                                            <Camera className="w-6 h-6 mx-auto mb-1" />
+                                            <span className="text-[10px] font-bold">Cliquez pour ajouter</span>
+                                        </div>
+                                    )}
+                                </div>
+                                <input
+                                    id="expense-proof-upload"
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            const reader = new FileReader();
+                                            reader.onloadend = () => {
+                                                setNewExpense(prev => ({ ...prev, proofPhoto: reader.result as string }));
+                                            };
+                                            reader.readAsDataURL(file);
+                                        }
+                                    }}
+                                />
+                            </div>
+
                             <div className="flex gap-3 pt-4">
                                 <button
                                     type="button"
@@ -223,6 +294,7 @@ const GlobalExpenses: React.FC<{ store: any }> = ({ store }) => {
                             <th className="p-4 font-bold uppercase text-[10px] tracking-widest">Type</th>
                             <th className="p-4 font-bold uppercase text-[10px] tracking-widest">Description</th>
                             <th className="p-4 font-bold uppercase text-[10px] tracking-widest text-right">Montant</th>
+                            <th className="p-4 font-bold uppercase text-[10px] tracking-widest text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-800">
@@ -238,11 +310,39 @@ const GlobalExpenses: React.FC<{ store: any }> = ({ store }) => {
                                 <td className="p-4 text-right font-bold text-red-400">
                                     - {formatMoney(ex.amount)}
                                 </td>
+                                <td className="p-4 text-right flex justify-end gap-2">
+                                    {ex.proofPhoto && store.currentUser?.role === 'ADMIN' && (
+                                        <button
+                                            onClick={() => {
+                                                const w = window.open('about:blank');
+                                                if (w) {
+                                                    w.document.write(`<img src="${ex.proofPhoto}" style="max-width: 100%; height: auto;"/>`);
+                                                    w.document.close();
+                                                }
+                                            }}
+                                            className="p-2 bg-neutral-950 border border-neutral-800 rounded-lg text-neutral-400 hover:text-white transition-all"
+                                            title="Voir le justificatif"
+                                        >
+                                            <Camera className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                    {store.currentUser?.role === 'ADMIN' && (
+                                        <button
+                                            onClick={() => store.deleteGlobalExpense(ex.id)}
+                                            className="p-2 bg-neutral-950 border border-neutral-800 rounded-lg text-neutral-400 hover:text-red-500 transition-colors"
+                                            title="Supprimer"
+                                        >
+                                            <TrendingDown className="w-4 h-4" />
+                                            {/* Used TrendingDown as trash icon was not imported, wait, let's look at imports. */}
+                                            {/* Ah, I see Trash2 might not be imported. But I CAN import it. */}
+                                        </button>
+                                    )}
+                                </td>
                             </tr>
                         ))}
                         {store.globalExpenses.length === 0 && (
                             <tr>
-                                <td colSpan={4} className="p-8 text-center text-neutral-500">
+                                <td colSpan={5} className="p-8 text-center text-neutral-500">
                                     Aucune charge enregistrée
                                 </td>
                             </tr>

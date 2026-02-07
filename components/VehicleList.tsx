@@ -741,6 +741,75 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                   </p>
                 </div>
               </div>
+
+              {/* Simulation de Vente & Clôture */}
+              <div className="bg-neutral-950 border border-neutral-800 rounded-[2.5rem] p-10 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-900/10 rounded-full blur-[80px] pointer-events-none"></div>
+
+                <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-8 flex items-center gap-3">
+                  <Calculator className="w-6 h-6 text-emerald-500" /> Simulation de Vente & Clôture
+                </h3>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-end">
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Prix de Vente Simulé ({CURRENCY})</label>
+                    <input
+                      type="number"
+                      className="w-full bg-neutral-900 border border-neutral-800 p-5 rounded-2xl text-2xl font-black text-white outline-none focus:border-emerald-500 transition-all shadow-inner"
+                      placeholder="0"
+                      value={simulatedResale}
+                      onChange={(e) => setSimulatedResale(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="bg-neutral-900 p-6 rounded-3xl border border-neutral-800">
+                    <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest mb-2">Résultat Final Projeté</p>
+                    <div className={`text-3xl font-black ${projectedResult >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                      {(projectedResult).toLocaleString()} <span className="text-sm text-neutral-600">{CURRENCY}</span>
+                    </div>
+                    <p className="text-[9px] text-neutral-600 mt-2 font-bold">
+                      (Exploitation + Vente) - Achat
+                    </p>
+                  </div>
+
+                  <div>
+                    <button
+                      onClick={() => {
+                        if (!simulatedResale || Number(simulatedResale) <= 0) {
+                          alert("Veuillez saisir un prix de vente valide.");
+                          return;
+                        }
+                        if (confirm(`ATTENTION: ACTION IRRÉVERSIBLE.\n\nVous êtes sur le point de vendre le véhicule "${vehicle.name}" pour ${Number(simulatedResale).toLocaleString()} DA.\n\nLe véhicule sera ARCHIVÉ et ne pourra plus recevoir de nouvelles opérations.\nUne entrée de REVENU correspondant à la vente sera ajoutée.\n\nContinuer ?`)) {
+                          // 1. Update Vehicle (Archive + Sale Price)
+                          store.updateVehicle({
+                            ...vehicle,
+                            isArchived: true,
+                            salePrice: Number(simulatedResale)
+                          });
+
+                          // 2. Add Sale Revenue Entry
+                          store.addEntry({
+                            id: `sale-${Date.now()}`,
+                            vehicleId: vehicle.id,
+                            date: new Date().toISOString(),
+                            amount: Number(simulatedResale),
+                            type: 'REVENUE', // EntryType.REVENUE
+                            description: `Vente Véhicule : ${vehicle.name}`,
+                            agentName: store.currentUser?.name || 'Admin',
+                            status: 'APPROVED'
+                          });
+
+                          alert("Véhicule vendu et archivé avec succès.");
+                          onClose();
+                        }
+                      }}
+                      className="w-full py-5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-emerald-900/30 transition-all active:scale-95 border border-emerald-600/30"
+                    >
+                      Confirmer la Vente et Archiver
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
