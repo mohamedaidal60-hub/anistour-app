@@ -23,6 +23,7 @@ const Extra: React.FC<ExtraProps> = ({ store }) => {
     const [newDocType, setNewDocType] = useState('');
     const [newDocDate, setNewDocDate] = useState('');
     const [newDocPhoto, setNewDocPhoto] = useState<string | null>(null);
+    const [showRepartitionModal, setShowRepartitionModal] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // --- GED Logic ---
@@ -178,11 +179,7 @@ const Extra: React.FC<ExtraProps> = ({ store }) => {
                             <Save className="w-4 h-4" /> Backup JSON
                         </button>
                         <button
-                            onClick={() => {
-                                if (confirm("Voulez-vous clôturer la période et lancer la RÉPARTITION ? Les bénéfices actuels seront archivés dans l'historique global.")) {
-                                    store.purgeDatabase();
-                                }
-                            }}
+                            onClick={() => setShowRepartitionModal(true)}
                             disabled={store.entries.length === 0 && store.globalExpenses.length === 0}
                             className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 justify-center border border-red-900/30 ${store.entries.length === 0 && store.globalExpenses.length === 0 ? 'bg-neutral-900 text-neutral-600 border-neutral-800 cursor-not-allowed' : 'text-red-500 animate-pulse hover:bg-red-900/20'}`}
                             title={store.entries.length === 0 && store.globalExpenses.length === 0 ? "Aucune nouvelle saisie à répartir" : "Clôturer et Répartir"}
@@ -192,6 +189,74 @@ const Extra: React.FC<ExtraProps> = ({ store }) => {
                     </div>
                 )}
             </div>
+
+            {/* Repartition Confirmation Modal */}
+            {showRepartitionModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl animate-in fade-in duration-300">
+                    <div className="bg-neutral-950 border border-neutral-800 w-full max-w-2xl rounded-[3rem] overflow-hidden shadow-2xl shadow-red-900/20 animate-in zoom-in-95 duration-500">
+                        <div className="p-10 space-y-8">
+                            <div className="text-center space-y-2">
+                                <div className="w-20 h-20 bg-red-700/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                                    <Database className="w-10 h-10 text-red-600" />
+                                </div>
+                                <h1 className="text-3xl font-black text-white uppercase tracking-tighter">Validation Répartition</h1>
+                                <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-[0.3em]">Calcul de clôture de période</p>
+                            </div>
+
+                            <div className="bg-neutral-900/50 border border-neutral-800 rounded-[2.5rem] p-8 space-y-6">
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center text-xs font-black uppercase tracking-widest">
+                                        <span className="text-neutral-500">Recettes Brutes (+)</span>
+                                        <span className="text-emerald-500">{store.getFinancialStats().revenue.toLocaleString()} {CURRENCY}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs font-black uppercase tracking-widest">
+                                        <span className="text-neutral-500">Charges d'Exploitation (-)</span>
+                                        <span className="text-red-500">{(store.getFinancialStats().expenses + store.getFinancialStats().globalExpenses).toLocaleString()} {CURRENCY}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs font-black uppercase tracking-widest border-b border-neutral-800 pb-4">
+                                        <span className="text-neutral-500">Pertes sur Ventes/Cessions (-)</span>
+                                        <span className="text-amber-500">
+                                            {(store.vehicles.filter(v => v.isArchived).reduce((sum, v) => sum + (v.purchasePrice || 0), 0) -
+                                                store.vehicles.filter(v => v.isArchived).reduce((sum, v) => sum + (v.salePrice || 0), 0)).toLocaleString()} {CURRENCY}
+                                        </span>
+                                    </div>
+                                    <div className="pt-4 flex justify-between items-center">
+                                        <span className="text-sm font-black text-white uppercase tracking-widest">Bénéfice Répartissable (=)</span>
+                                        <span className="text-2xl font-black text-red-600 underline underline-offset-8 decoration-2">{store.getFinancialStats().netProfit.toLocaleString()} {CURRENCY}</span>
+                                    </div>
+                                </div>
+
+                                <div className="p-4 bg-red-950/10 border border-red-900/20 rounded-2xl flex items-start gap-3">
+                                    <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
+                                    <p className="text-[9px] font-medium text-neutral-400 leading-relaxed italic">
+                                        En validant, ces chiffres seront ARCHIVÉS définitivement dans l'historique global.
+                                        Les opérations courantes seront PURGÉES pour démarrer une nouvelle période.
+                                        Assurez-vous d'avoir exporté un Backup au préalable.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 pt-4">
+                                <button
+                                    onClick={() => setShowRepartitionModal(false)}
+                                    className="py-5 bg-neutral-900 hover:bg-neutral-800 text-neutral-500 hover:text-white rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        await store.purgeDatabase();
+                                        setShowRepartitionModal(false);
+                                    }}
+                                    className="py-5 bg-red-700 hover:bg-red-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-red-900/30 transition-all active:scale-95 border border-red-500"
+                                >
+                                    Confirmer la Répartition
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {activeTab === 'BI' ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

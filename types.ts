@@ -133,3 +133,23 @@ export interface GlobalExpense {
   agentName?: string;
   cashDeskId?: string;
 }
+
+export enum RentalStatus {
+  AVAILABLE = 'AVAILABLE',
+  RENTED = 'RENTED',
+  MAINTENANCE = 'MAINTENANCE'
+}
+
+export interface RentalCheckout {
+  id: string;
+  vehicleId: string;
+  clientName: string;
+  startDate: string;
+  expectedEndDate: string;
+  startMileage: number;
+  fuelLevel: number; // 0-100
+  notes?: string;
+  isCompleted: boolean;
+  endMileage?: number;
+  actualEndDate?: string;
+}
