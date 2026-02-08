@@ -60,6 +60,8 @@ export interface Vehicle {
   simulatedSalePrice?: number;
   maintenanceConfigs: MaintenanceConfig[];
   documents?: VehicleDocument[];
+  status?: RentalStatus;
+  currentRental?: RentalCheckout;
 }
 
 export interface VehicleDocument {

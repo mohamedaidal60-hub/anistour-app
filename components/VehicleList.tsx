@@ -1,12 +1,12 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { useFleetStore } from '../store.ts';
-import { UserRole, Vehicle, MaintenanceConfig, EntryType, MaintenanceStatus, FinancialEntry } from '../types.ts';
+import { UserRole, Vehicle, MaintenanceConfig, EntryType, MaintenanceStatus, FinancialEntry, RentalStatus } from '../types.ts';
 import { MAINTENANCE_TYPES, CURRENCY } from '../constants.ts';
 import {
   Plus, Search, Archive, Calendar, Ruler, Car, Camera, Wrench,
   FileText, X, Save, Filter, Trash2, Edit2, Calculator,
   AlertCircle, ChevronRight, CheckSquare, Square, User,
-  Printer, TrendingUp, History
+  Printer, TrendingUp, History, Timer, Fuel, UserPlus, LogIn
 } from 'lucide-react';
 
 interface VehicleListProps {
@@ -78,7 +78,12 @@ const VehicleList: React.FC<VehicleListProps> = ({ store }) => {
                           <img src={vehicle.photo || '/car-placeholder.jpg'} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                         </div>
                         <div className="min-w-0">
-                          <p className="font-black text-neutral-100 text-base uppercase tracking-tighter truncate group-hover:text-red-500 transition-colors">{vehicle.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-black text-neutral-100 text-base uppercase tracking-tighter truncate group-hover:text-red-500 transition-colors">{vehicle.name}</p>
+                            {vehicle.status === RentalStatus.RENTED && (
+                              <span className="px-1.5 py-0.5 bg-amber-900/30 text-amber-500 text-[7px] font-black rounded border border-amber-800/50 uppercase">Loué</span>
+                            )}
+                          </div>
                           <p className="text-[10px] text-neutral-500 font-black uppercase tracking-widest mt-0.5">{vehicle.registrationNumber || 'MATRICULE N/A'}</p>
                         </div>
                       </div>
@@ -430,8 +435,7 @@ const AddVehicleModal = ({ onClose, onAdd, store, vehicleToEdit }: { onClose: ()
 
 // Detailed Modal for Vehicle Info
 const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, store: any, onClose: () => void }) => {
-  const [tab, setTab] = useState<'carnet' | 'calculs'>('carnet');
-  const [filterText, setFilterText] = useState('');
+  const [tab, setTab] = useState<'carnet' | 'calculs' | 'location'>('carnet');
   const [simulatedResale, setSimulatedResale] = useState('');
   const [editingConfig, setEditingConfig] = useState(false);
   const [tempConfigs, setTempConfigs] = useState<MaintenanceConfig[]>(vehicle.maintenanceConfigs || []);
@@ -456,18 +460,6 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
   const monthlyProfit = netProfit / monthsActive;
 
   const projectedResult = (Number(simulatedResale) || 0) + netProfit - vehicle.purchasePrice;
-
-  const filteredEntries = entries.filter((e: FinancialEntry) => {
-    const description = e.description || e.designation || '';
-    const amountStr = (e.amount ?? 0).toString();
-    const agent = e.agentName ?? '';
-    const matchText = filterText ? (
-      description.toLowerCase().includes(filterText.toLowerCase()) ||
-      amountStr.includes(filterText) ||
-      agent.toLowerCase().includes(filterText.toLowerCase())
-    ) : true;
-    return matchText;
-  });
 
   const saveConfigs = () => {
     store.updateVehicle({ ...vehicle, maintenanceConfigs: tempConfigs });
@@ -523,6 +515,12 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
           >
             <Wrench className="w-4 h-4" /> Carnet & Historique
           </button>
+          <button
+            onClick={() => setTab('location')}
+            className={`flex-1 py-5 rounded-2xl text-[11px] font-black uppercase tracking-[0.25em] flex items-center justify-center gap-3 transition-all duration-300 ${tab === 'location' ? 'bg-amber-700 text-white shadow-xl shadow-amber-900/20' : 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-900'}`}
+          >
+            <History className="w-4 h-4" /> Gestion Location
+          </button>
           {isAdmin && (
             <button
               onClick={() => setTab('calculs')}
@@ -535,7 +533,102 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-neutral-900 custom-scrollbar pb-20">
-          {tab === 'carnet' ? (
+          {tab === 'location' ? (
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`w-3 h-3 rounded-full animate-pulse ${vehicle.status === RentalStatus.RENTED ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                <h3 className="text-sm font-black text-white uppercase tracking-widest">
+                  Statut : {vehicle.status === RentalStatus.RENTED ? 'En Location' : 'Disponible'}
+                </h3>
+              </div>
+
+              {vehicle.status === RentalStatus.RENTED && vehicle.currentRental ? (
+                <div className="bg-neutral-950 border border-neutral-800 rounded-3xl p-8 space-y-8 shadow-2xl">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-black text-neutral-600 uppercase tracking-widest">Client Actuel</p>
+                      <p className="text-lg font-black text-white uppercase">{vehicle.currentRental.clientName}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-black text-neutral-600 uppercase tracking-widest">Échéance Retour</p>
+                      <p className="text-lg font-black text-amber-500 uppercase">{new Date(vehicle.currentRental.expectedEndDate).toLocaleDateString()}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-black text-neutral-600 uppercase tracking-widest">KM au Départ</p>
+                      <p className="text-lg font-black text-white">{(vehicle.currentRental.startMileage ?? 0).toLocaleString()} KM</p>
+                    </div>
+                    <div className="space-y-1 text-right">
+                      <p className="text-[8px] font-black text-neutral-600 uppercase tracking-widest">Temps Restant</p>
+                      <p className="text-lg font-black text-neutral-400">
+                        {Math.max(0, Math.ceil((new Date(vehicle.currentRental.expectedEndDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24)))} Jours
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-8 border-t border-neutral-900 space-y-6">
+                    <h4 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Procédure de Retour</h4>
+                    <div className="flex flex-col sm:flex-row gap-4 items-end">
+                      <div className="flex-1 space-y-2">
+                        <label className="text-[9px] font-black text-neutral-600 uppercase px-1">KM au Retour</label>
+                        <input
+                          type="number"
+                          id="return-km"
+                          placeholder={vehicle.lastMileage.toString()}
+                          className="w-full bg-neutral-900 border border-neutral-800 p-4 rounded-xl text-xl font-black text-white focus:border-red-600 outline-none"
+                        />
+                      </div>
+                      <button
+                        onClick={() => {
+                          const km = (document.getElementById('return-km') as HTMLInputElement).value;
+                          if (km && Number(km) >= vehicle.lastMileage) {
+                            store.checkinVehicle(vehicle.id, Number(km));
+                            alert("Retour enregistré.");
+                          } else alert("Erreur KM");
+                        }}
+                        className="bg-red-700 hover:bg-red-600 text-white px-8 py-5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95"
+                      >
+                        Valider le Retour
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-neutral-950 border border-neutral-800 rounded-3xl p-8 space-y-6">
+                  <h4 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-4">Mise en Location</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-[9px] font-black text-neutral-600 uppercase px-1">Nom du Client</label>
+                      <input id="rent-client" type="text" className="w-full bg-neutral-900 border border-neutral-800 p-4 rounded-xl text-sm font-bold text-white outline-none focus:border-red-600" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[9px] font-black text-neutral-600 uppercase px-1">Fin Prévue</label>
+                      <input id="rent-end" type="date" className="w-full bg-neutral-900 border border-neutral-800 p-4 rounded-xl text-sm font-bold text-white outline-none focus:border-red-600" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[9px] font-black text-neutral-600 uppercase px-1">Niveau Carburant (%)</label>
+                      <input id="rent-fuel" type="number" defaultValue="100" className="w-full bg-neutral-900 border border-neutral-800 p-4 rounded-xl text-sm font-bold text-white outline-none focus:border-red-600" />
+                    </div>
+                    <div className="flex items-end">
+                      <button
+                        onClick={() => {
+                          const c = (document.getElementById('rent-client') as HTMLInputElement).value;
+                          const d = (document.getElementById('rent-end') as HTMLInputElement).value;
+                          const f = (document.getElementById('rent-fuel') as HTMLInputElement).value;
+                          if (c && d) {
+                            store.checkoutVehicle(vehicle.id, c, d, Number(f));
+                            alert("Départ validé.");
+                          } else alert("Champs obligatoires.");
+                        }}
+                        className="w-full bg-emerald-700 hover:bg-emerald-600 text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95"
+                      >
+                        Valider le Départ
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : tab === 'carnet' ? (
             <div className="space-y-8 sm:space-y-10">
               {/* Mileage Update */}
               <div className="bg-neutral-950 border border-neutral-800 rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-xl">
