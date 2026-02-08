@@ -5,7 +5,7 @@ import { Vehicle, VehicleDocument, EntryType, FinancialEntry, MaintenanceStatus 
 import {
     PieChart, BarChart, FileText, Filter, AlertTriangle,
     Calendar, CheckCircle, Clock, TrendingUp, TrendingDown, DollarSign,
-    X, Camera, Upload
+    X, Camera, Upload, Save
 } from 'lucide-react';
 import { CURRENCY } from '../constants.ts';
 
@@ -81,16 +81,22 @@ const Extra: React.FC<ExtraProps> = ({ store }) => {
         // Marge Exploitation = Rev - Exp
         const operatingProfit = revenue - expenses;
 
-        // Gain/Perte Asset = Sale - Purchase (only if archived/sold)
-        const assetResult = v.isArchived ? (v.salePrice || 0) - v.purchasePrice : 0;
+        // Perte Vente = Prix Achat - Prix Vente (ou simulation)
+        const salePrice = v.isArchived ? (v.salePrice || 0) : (v.simulatedSalePrice || 0);
+        const saleLoss = v.purchasePrice - salePrice;
 
-        const net = operatingProfit + assetResult;
+        const net = operatingProfit - saleLoss;
+
+        const regDate = new Date(v.registrationDate);
+        const now = new Date();
+        const diffMonths = (now.getFullYear() - regDate.getFullYear()) * 12 + (now.getMonth() - regDate.getMonth());
+        const monthsForDiv = Math.max(0, diffMonths);
 
         const km = v.lastMileage || 1;
         const costPerKm = expenses / km;
-        const profitPerKm = net / km;
+        const profitPerKm = monthsForDiv > 0 ? net / monthsForDiv : net;
 
-        return { ...v, revenue, expenses, net, operatingProfit, assetResult, costPerKm, profitPerKm };
+        return { ...v, revenue, expenses, net, operatingProfit, saleLoss, costPerKm, profitPerKm, monthsForDiv };
     });
 
     const bestPerformer = [...vehicleStats].sort((a, b) => b.net - a.net)[0];
@@ -112,6 +118,18 @@ const Extra: React.FC<ExtraProps> = ({ store }) => {
                 >
                     <FileText className="w-4 h-4" /> Gestion Documentaire
                 </button>
+                {store.currentUser?.role === 'ADMIN' && (
+                    <button
+                        onClick={() => {
+                            if (confirm("Voulez-vous télécharger une sauvegarde locale de toute la base de données ?")) {
+                                store.exportLocalData();
+                            }
+                        }}
+                        className="flex-1 md:flex-none px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 justify-center text-amber-500 hover:bg-amber-900/20 border border-amber-900/30"
+                    >
+                        <Save className="w-4 h-4" /> Sauvegarde Locale
+                    </button>
+                )}
             </div>
 
             {activeTab === 'BI' ? (
@@ -171,9 +189,9 @@ const Extra: React.FC<ExtraProps> = ({ store }) => {
                                         <th className="px-6 py-4">Véhicule</th>
                                         <th className="px-6 py-4">État</th>
                                         <th className="px-6 py-4 text-right">Marge Exploit.</th>
-                                        <th className="px-6 py-4 text-right">Résultat Vente</th>
+                                        <th className="px-6 py-4 text-right">Perte/Gain Vente</th>
                                         <th className="px-6 py-4 text-right">Net Global</th>
-                                        <th className="px-6 py-4 text-right">Coût/KM</th>
+                                        <th className="px-6 py-4 text-right">Rendement/Mois</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-neutral-800">
@@ -193,13 +211,15 @@ const Extra: React.FC<ExtraProps> = ({ store }) => {
                                             <td className="px-6 py-4 text-right text-xs font-bold text-emerald-500">
                                                 {v.operatingProfit.toLocaleString()}
                                             </td>
-                                            <td className={`px-6 py-4 text-right text-xs font-bold ${v.assetResult >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                                {v.isArchived ? (v.assetResult > 0 ? '+' : '') + v.assetResult.toLocaleString() : '-'}
+                                            <td className={`px-6 py-4 text-right text-xs font-bold ${v.saleLoss <= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                {v.isArchived || v.simulatedSalePrice ? (v.saleLoss <= 0 ? '+' : '-') + Math.abs(v.saleLoss).toLocaleString() : '-'}
                                             </td>
                                             <td className={`px-6 py-4 text-right text-xs font-black p-4 rounded-xl ${v.net >= 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
                                                 {v.net.toLocaleString()}
                                             </td>
-                                            <td className="px-6 py-4 text-right text-xs text-neutral-400">{v.costPerKm.toFixed(2)}</td>
+                                            <td className="px-6 py-4 text-right text-xs text-neutral-400">
+                                                {v.monthsForDiv > 0 ? (v.net / v.monthsForDiv).toLocaleString(undefined, { maximumFractionDigits: 0 }) : v.net.toLocaleString()}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -373,8 +393,9 @@ const Extra: React.FC<ExtraProps> = ({ store }) => {
                         )}
                     </div>
                 </div>
-            )}
-        </div>
+            )
+            }
+        </div >
     );
 };
 

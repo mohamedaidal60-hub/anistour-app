@@ -446,18 +446,24 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
 
   const totalRevenue = revenueEntries.reduce((sum: number, e: FinancialEntry) => sum + (e.amount || 0), 0);
   const totalExpenses = expenseEntries.reduce((sum: number, e: FinancialEntry) => sum + (e.amount || 0), 0);
-  const operatingProfit = totalRevenue - totalExpenses; // Bénéfice Exploitation
+  const operatingProfit = totalRevenue - totalExpenses; // Bénéfice
 
-  const monthsActive = Math.max(1, Math.floor((new Date().getTime() - new Date(vehicle.registrationDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
-  const monthlyProfit = operatingProfit / monthsActive;
+  // Calculation of months active: Ignore the purchase month.
+  // Formula: (Current Year - Reg Year) * 12 + (Current Month - Reg Month)
+  const regDate = new Date(vehicle.registrationDate);
+  const now = new Date();
+  const diffMonths = (now.getFullYear() - regDate.getFullYear()) * 12 + (now.getMonth() - regDate.getMonth());
+  const monthsActive = Math.max(0, diffMonths); // 0 in purchase month, 1 in next month, etc.
+
+  const monthlyProfit = monthsActive > 0 ? operatingProfit / monthsActive : operatingProfit; // Avoid div by zero
 
   // Simulation Logic
   const simulatedSaleVal = Number(simulatedResale) || 0;
-  // Global Net = Operating Profit + (Sale Price - Purchase Price)
-  const saleDifference = simulatedSaleVal - vehicle.purchasePrice;
-  const globalNetProfit = operatingProfit + saleDifference;
-  const totalProjectedProfit = globalNetProfit;
-  const projectedMonthlyProfit = totalProjectedProfit / monthsActive;
+  // Perte Vente = Prix Achat - Prix Vente
+  const saleLoss = vehicle.purchasePrice - simulatedSaleVal;
+  // Bénéfice Net Global = Bénéfice - Perte Vente
+  const globalNetProfit = operatingProfit - saleLoss;
+  const projectedMonthlyProfit = monthsActive > 0 ? globalNetProfit / monthsActive : globalNetProfit;
 
   const filteredEntries = entries.filter((e: FinancialEntry) => {
     const description = e.description || e.designation || '';
@@ -801,12 +807,12 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                   <div className="bg-neutral-900 p-4 rounded-2xl border border-neutral-800 lg:col-span-2">
                     <div className="grid grid-cols-2 gap-4 mb-4 border-b border-neutral-800 pb-4">
                       <div>
-                        <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest mb-1">Resultat Vente</p>
-                        <p className={`text-base font-black ${saleDifference >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                          {saleDifference > 0 ? '+' : ''}{saleDifference.toLocaleString()} {CURRENCY}
+                        <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest mb-1">Résultat Vente</p>
+                        <p className={`text-base font-black ${saleLoss <= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                          {saleLoss <= 0 ? '+' : '-'}{Math.abs(saleLoss).toLocaleString()} {CURRENCY}
                         </p>
                         <p className="text-[8px] text-neutral-500">
-                          {saleDifference >= 0 ? '(Plus-value)' : '(Perte sur vente)'}
+                          {saleLoss <= 0 ? '(Plus-value)' : '(Moins-value)'}
                         </p>
                       </div>
                       <div>

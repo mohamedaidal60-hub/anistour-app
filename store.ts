@@ -272,10 +272,19 @@ export function useFleetStore() {
     const purchaseTotalOfSold = vehicles.filter(v => v.isArchived).reduce((sum, v) => sum + (v.purchasePrice || 0), 0);
     const salesTotal = vehicles.filter(v => v.isArchived).reduce((sum, v) => sum + (v.salePrice || 0), 0);
     const totalExpenses = vehicleExpenses + globalTotal;
-    const netProfit = revenue - totalExpenses + (salesTotal - purchaseTotalOfSold);
+    // Perte Vente = Prix Achat - Prix Vente
+    // Bénéfice Net Global = Bénéfice - Perte Vente
+    const lossOnPastSales = purchaseTotalOfSold - salesTotal;
+    const netProfit = revenue - totalExpenses - lossOnPastSales;
 
     const activeVehicles = vehicles.filter(v => !v.isArchived);
-    const costPerVehicle = activeVehicles.length > 0 ? (globalTotal / activeVehicles.length) : 0;
+    // Mature vehicles = vehicles past their purchase month for average calculations
+    const matureVehicles = activeVehicles.filter(v => {
+      const reg = new Date(v.registrationDate);
+      const now = new Date();
+      return (now.getFullYear() - reg.getFullYear()) * 12 + (now.getMonth() - reg.getMonth()) > 0;
+    });
+    const costPerVehicle = matureVehicles.length > 0 ? (globalTotal / matureVehicles.length) : (activeVehicles.length > 0 ? (globalTotal / activeVehicles.length) : 0);
 
     let firstDate = new Date();
     if (vehicles.length > 0) {
@@ -284,7 +293,11 @@ export function useFleetStore() {
         if (d < firstDate) firstDate = d;
       });
     }
-    const diffMonths = Math.max(1, Math.floor((new Date().getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
+
+    const now = new Date();
+    // Use the same logic: Skip the current month of first registration
+    const diffMonths = (now.getFullYear() - firstDate.getFullYear()) * 12 + (now.getMonth() - firstDate.getMonth());
+    const finalMonths = Math.max(1, diffMonths);
 
     return {
       revenue, expenses: vehicleExpenses, globalExpenses: globalTotal, totalExpenses,
@@ -369,6 +382,24 @@ export function useFleetStore() {
         console.error("Chat Error:", error);
         alert("Erreur d'envoi du message au serveur.");
       }
+    },
+    exportLocalData: () => {
+      const data = {
+        vehicles,
+        entries,
+        globalExpenses,
+        users,
+        notifications,
+        cashDesks,
+        exportDate: new Date().toISOString()
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Anistour_Backup_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
     }
   };
 }
