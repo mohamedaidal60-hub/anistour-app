@@ -19,6 +19,7 @@ const Caisse: React.FC<CaisseProps> = ({ store }) => {
     const [showFundModal, setShowFundModal] = useState(false);
     const [fundAmount, setFundAmount] = useState('');
     const [fundDescription, setFundDescription] = useState('Approvisionnement Caisse');
+    const [fundDate, setFundDate] = useState(new Date().toISOString().split('T')[0]);
 
     const selectedDesk = store.cashDesks.find(d => d.id === selectedDeskId);
     const deskEntries = store.entries.filter((e: FinancialEntry) => e.cashDeskId === selectedDeskId);
@@ -31,7 +32,7 @@ const Caisse: React.FC<CaisseProps> = ({ store }) => {
         const entry: FinancialEntry = {
             id: `fund-${Date.now()}`,
             cashDeskId: selectedDeskId,
-            date: new Date().toISOString().split('T')[0],
+            date: fundDate,
             amount: Number(fundAmount),
             type: EntryType.FUNDING,
             description: fundDescription,
@@ -206,6 +207,16 @@ const Caisse: React.FC<CaisseProps> = ({ store }) => {
                                     className="w-full bg-neutral-950 border border-neutral-800 p-3 rounded-xl outline-none focus:border-red-600 text-xs font-bold text-white shadow-lg"
                                     value={fundDescription}
                                     onChange={e => setFundDescription(e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[9px] font-black text-neutral-500 uppercase tracking-[0.2em] px-1">Date d'opération</label>
+                                <input
+                                    type="date"
+                                    required
+                                    className="w-full bg-neutral-950 border border-neutral-800 p-3 rounded-xl outline-none focus:border-red-600 text-xs font-bold text-white shadow-lg"
+                                    value={fundDate}
+                                    onChange={e => setFundDate(e.target.value)}
                                 />
                             </div>
                             <button

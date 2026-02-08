@@ -147,6 +147,26 @@ export function useFleetStore() {
       if (newNotifs.length > 0) {
         await supabase.from('notifications').insert(newNotifs);
       }
+
+      // Check for DB Saturation (e.g. 1000 entries)
+      if (entries.length > 1000) {
+        const saturationNotifId = 'saturation-warning';
+        const exists = notifications.find(n => n.id === saturationNotifId);
+        if (!exists) {
+          await supabase.from('notifications').insert([{
+            id: saturationNotifId,
+            vehicleId: 'SYSTEM',
+            vehicleName: 'SYSTEME',
+            type: 'ALERTE BASE DE DONNEES',
+            message: 'La base de données approche de sa capacité maximale. Veuillez effectuer une sauvegarde locale et archiver (purger) les données anciennes.',
+            targetKm: 0,
+            createdAt: new Date().toISOString(),
+            isRead: false,
+            isCritical: true,
+            isArchived: false
+          }]);
+        }
+      }
     };
     checkAlerts();
   }, [vehicles, notifications]);
@@ -299,9 +319,21 @@ export function useFleetStore() {
     const diffMonths = (now.getFullYear() - firstDate.getFullYear()) * 12 + (now.getMonth() - firstDate.getMonth());
     const finalMonths = Math.max(1, diffMonths);
 
+    // Live Stats (Today)
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayEntries = validEntries.filter(e => e.date.startsWith(todayStr));
+    const todayRevenue = todayEntries.filter(e => e.type === EntryType.REVENUE).reduce((sum, e) => sum + (e.amount || 0), 0);
+    const todayExpenses = todayEntries.filter(e => e.type !== EntryType.REVENUE && e.type !== EntryType.FUNDING).reduce((sum, e) => sum + (e.amount || 0), 0);
+    const todayProfit = todayRevenue - todayExpenses;
+
+    // Cash On Hand (Total in all desks)
+    const cashOnHand = cashDesks.reduce((sum, d) => sum + (d.balance || 0), 0);
+
     return {
       revenue, expenses: vehicleExpenses, globalExpenses: globalTotal, totalExpenses,
-      netProfit, monthlyProfit: netProfit / diffMonths, costPerVehicle, activeCount: activeVehicles.length
+      netProfit, monthlyProfit: netProfit / finalMonths, activeCount: activeVehicles.length,
+      costPerVehicle, finalMonths,
+      todayRevenue, todayExpenses, todayProfit, cashOnHand
     };
   };
 
@@ -400,6 +432,37 @@ export function useFleetStore() {
       a.download = `Anistour_Backup_${new Date().toISOString().split('T')[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
+    },
+    purgeDatabase: async () => {
+      if (!confirm("ATTENTION : Cette action va effacer définitivement toutes les opérations, dépenses et notifications de la base de données CLOUD. Assurez-vous d'avoir téléchargé une sauvegarde locale avant. Continuer ?")) {
+        return;
+      }
+
+      setIsCloudSyncing(true);
+      try {
+        // Delete entries, global_expenses, notifications, messages
+        await supabase.from('entries').delete().neq('id', '0');
+        await supabase.from('global_expenses').delete().neq('id', '0');
+        await supabase.from('notifications').delete().neq('id', '0');
+        await supabase.from('messages').delete().neq('id', '0');
+
+        // Optionally reset cash desks balance to 0 ? 
+        // The user said "vider la database", usually means transactions.
+        // We keep vehicles and users.
+
+        setEntries([]);
+        setGlobalExpenses([]);
+        setNotifications([]);
+        setMessages([]);
+
+        alert("Base de données purgée avec succès.");
+        fetchData();
+      } catch (e) {
+        console.error(e);
+        alert("Erreur lors de la purge.");
+      } finally {
+        setIsCloudSyncing(false);
+      }
     }
   };
 }

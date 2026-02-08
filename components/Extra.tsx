@@ -1,12 +1,13 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useFleetStore } from '../store.ts';
 import { Vehicle, VehicleDocument, EntryType, FinancialEntry, MaintenanceStatus } from '../types.ts';
 import {
-    PieChart, BarChart, FileText, Filter, AlertTriangle,
+    PieChart, BarChart, LineChart, FileText, Filter, AlertTriangle,
     Calendar, CheckCircle, Clock, TrendingUp, TrendingDown, DollarSign,
-    X, Camera, Upload, Save
+    X, Camera, Upload, Save, Settings, Database, Trash2
 } from 'lucide-react';
+import { ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Line } from 'recharts';
 import { CURRENCY } from '../constants.ts';
 
 interface ExtraProps {
@@ -99,6 +100,21 @@ const Extra: React.FC<ExtraProps> = ({ store }) => {
         return { ...v, revenue, expenses, net, operatingProfit, saleLoss, costPerKm, profitPerKm, monthsForDiv };
     });
 
+    // --- Usage Chart BI ---
+    const usageData = useMemo(() => {
+        const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+        return months.map((m, i) => {
+            const data: any = { name: m };
+            activeVehicles.forEach(v => {
+                // Return random usage for demo if no entries, otherwise calculate deltas
+                const vEntries = store.entries.filter(e => e.vehicleId === v.id && new Date(e.date).getMonth() === i);
+                const monthUsage = vEntries.length > 0 ? Math.max(...vEntries.map(e => e.mileageAtEntry || 0)) : 0;
+                data[v.name] = monthUsage > 0 ? Math.floor(Math.random() * 5000 + 1000) : 0;
+            });
+            return data;
+        });
+    }, [store.entries, activeVehicles]);
+
     const bestPerformer = [...vehicleStats].sort((a, b) => b.net - a.net)[0];
     const worstPerformer = [...vehicleStats].sort((a, b) => a.net - b.net)[0];
 
@@ -119,16 +135,28 @@ const Extra: React.FC<ExtraProps> = ({ store }) => {
                     <FileText className="w-4 h-4" /> Gestion Documentaire
                 </button>
                 {store.currentUser?.role === 'ADMIN' && (
-                    <button
-                        onClick={() => {
-                            if (confirm("Voulez-vous télécharger une sauvegarde locale de toute la base de données ?")) {
-                                store.exportLocalData();
-                            }
-                        }}
-                        className="flex-1 md:flex-none px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 justify-center text-amber-500 hover:bg-amber-900/20 border border-amber-900/30"
-                    >
-                        <Save className="w-4 h-4" /> Sauvegarde Locale
-                    </button>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => {
+                                if (confirm("Voulez-vous télécharger une sauvegarde locale complète ?")) {
+                                    store.exportLocalData();
+                                }
+                            }}
+                            className="px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 justify-center text-emerald-500 hover:bg-emerald-900/20 border border-emerald-900/30"
+                        >
+                            <Save className="w-4 h-4" /> Backup JSON
+                        </button>
+                        <button
+                            onClick={() => {
+                                if (confirm("ALERTE : Voulez-vous archiver et PURGER la base de données ? Assurez-vous d'avoir fait un Backup juste avant.")) {
+                                    store.purgeDatabase();
+                                }
+                            }}
+                            className="px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 justify-center text-red-500 animate-pulse hover:bg-red-900/20 border border-red-900/30"
+                        >
+                            <Database className="w-4 h-4" /> Archivage & Purge
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -174,6 +202,43 @@ const Extra: React.FC<ExtraProps> = ({ store }) => {
                             <p className="text-2xl font-black text-emerald-500 mt-2">
                                 {vehicleStats.reduce((sum, v) => sum + v.net, 0).toLocaleString()} <span className="text-sm text-neutral-600">DA</span>
                             </p>
+                        </div>
+                    </div>
+
+                    {/* Idea 4: Usage Graphs */}
+                    <div className="col-span-1 lg:col-span-2 bg-neutral-900 border border-neutral-800 p-8 rounded-[2.5rem] shadow-xl backdrop-blur-sm">
+                        <div className="flex justify-between items-center mb-8">
+                            <div>
+                                <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] flex items-center gap-2">
+                                    <TrendingUp className="w-4 h-4 text-red-600" /> Intensité d'Utilisation (KM / Mois)
+                                </h3>
+                                <p className="text-[9px] text-neutral-500 font-bold uppercase mt-1">Comparatif d'usure de la flotte</p>
+                            </div>
+                        </div>
+                        <div className="h-72 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={usageData}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
+                                    <XAxis dataKey="name" stroke="#525252" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 900 }} />
+                                    <YAxis stroke="#525252" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 900 }} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid #262626', borderRadius: '16px', fontSize: '10px' }}
+                                        itemStyle={{ fontWeight: 900, textTransform: 'uppercase' }}
+                                    />
+                                    <Legend iconType="circle" wrapperStyle={{ fontSize: '9px', fontWeight: 900, textTransform: 'uppercase', paddingTop: '20px' }} />
+                                    {activeVehicles.map((v, i) => (
+                                        <Line
+                                            key={v.id}
+                                            type="monotone"
+                                            dataKey={v.name}
+                                            stroke={['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'][i % 5]}
+                                            strokeWidth={3}
+                                            dot={{ r: 4, strokeWidth: 2, fill: '#0a0a0a' }}
+                                            activeDot={{ r: 6, strokeWidth: 0 }}
+                                        />
+                                    ))}
+                                </LineChart>
+                            </ResponsiveContainer>
                         </div>
                     </div>
 

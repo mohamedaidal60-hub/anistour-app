@@ -12,6 +12,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ store }) => {
   const stats = store.getFinancialStats();
+  const isAdmin = store.currentUser?.role === 'ADMIN';
 
   const recentEntries = useMemo(() => {
     return [...store.entries].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
@@ -28,37 +29,71 @@ const Dashboard: React.FC<DashboardProps> = ({ store }) => {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard title="Revenus" value={stats.revenue} icon={TrendingUp} color="text-emerald-500" />
-        <StatCard title="Charges" value={stats.expenses} icon={TrendingDown} color="text-red-500" />
-        <StatCard title="Bénéfice Net" value={stats.netProfit} icon={DollarSign} color="text-blue-500" />
-        <StatCard title="Bénéfice Mensuel" value={Math.round(stats.monthlyProfit)} icon={Calendar} color="text-purple-500" />
-        <StatCard title="Parc Actif" value={stats.activeCount} icon={Activity} color="text-amber-500" unit=" unités" />
-      </div>
+      {/* Idea 1: Live Profit Dashboard (Admin Only) */}
+      {isAdmin && (
+        <div className="bg-neutral-900 border border-neutral-800 p-1 rounded-2xl flex flex-col md:flex-row gap-1 shadow-2xl backdrop-blur-xl">
+          <div className="flex-1 bg-neutral-950 p-4 rounded-xl border border-neutral-900 flex justify-between items-center group overflow-hidden relative">
+            <div className="absolute inset-0 bg-emerald-500/5 translate-y-full group-hover:translate-y-0 transition-transform" />
+            <div>
+              <p className="text-[8px] font-black text-emerald-500 uppercase tracking-[0.3em]">Recette Jour</p>
+              <p className="text-xl font-black text-white mt-1">+{stats.todayRevenue.toLocaleString()} <span className="text-[10px] text-neutral-600">{CURRENCY}</span></p>
+            </div>
+            <ArrowUpRight className="w-8 h-8 text-emerald-900/40" />
+          </div>
+          <div className="flex-1 bg-neutral-950 p-4 rounded-xl border border-neutral-900 flex justify-between items-center group overflow-hidden relative">
+            <div className="absolute inset-0 bg-red-500/5 translate-y-full group-hover:translate-y-0 transition-transform" />
+            <div>
+              <p className="text-[8px] font-black text-red-500 uppercase tracking-[0.3em]">Dépenses Jour</p>
+              <p className="text-xl font-black text-white mt-1">-{stats.todayExpenses.toLocaleString()} <span className="text-[10px] text-neutral-600">{CURRENCY}</span></p>
+            </div>
+            <ArrowDownLeft className="w-8 h-8 text-red-900/40" />
+          </div>
+          <div className="flex-1 bg-gradient-to-br from-red-600 to-red-900 p-4 rounded-xl flex justify-between items-center shadow-lg shadow-red-900/20">
+            <div>
+              <p className="text-[8px] font-black text-white/60 uppercase tracking-[0.3em]">Cash Global Flotte</p>
+              <p className="text-xl font-black text-white mt-1">{(stats.cashOnHand).toLocaleString()} <span className="text-[10px] text-white/50">{CURRENCY}</span></p>
+            </div>
+            <Activity className="w-8 h-8 text-white/20" />
+          </div>
+        </div>
+      )}
+
+      {isAdmin && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <StatCard title="Revenus" value={stats.revenue} icon={TrendingUp} color="text-emerald-500" />
+          <StatCard title="Charges" value={stats.expenses} icon={TrendingDown} color="text-red-500" />
+          <StatCard title="Bénéfice Net" value={stats.netProfit} icon={DollarSign} color="text-blue-500" />
+          <StatCard title="Bénéfice Mensuel" value={Math.round(stats.monthlyProfit || 0)} icon={Calendar} color="text-purple-500" />
+          <StatCard title="Parc Actif" value={stats.activeCount} icon={Activity} color="text-amber-500" unit=" unités" />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-neutral-900/50 border border-neutral-800 p-6 rounded-3xl shadow-xl backdrop-blur-sm">
-            <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-              <Activity className="w-5 h-5 text-red-500" /> Performance Fleet Anistour ({CURRENCY})
-            </h3>
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
-                  <XAxis dataKey="name" stroke="#525252" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700 }} />
-                  <YAxis stroke="#525252" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700 }} />
-                  <Tooltip
-                    cursor={{ fill: '#171717' }}
-                    contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid #262626', borderRadius: '12px' }}
-                    itemStyle={{ color: '#f5f5f5', fontSize: '12px', fontWeight: 600 }}
-                  />
-                  <Bar dataKey="revenus" fill="#059669" radius={[4, 4, 0, 0]} barSize={12} />
-                  <Bar dataKey="charges" fill="#dc2626" radius={[4, 4, 0, 0]} barSize={12} />
-                </BarChart>
-              </ResponsiveContainer>
+          {/* Idea 4: Usage Graphs (Admin Only) */}
+          {isAdmin && (
+            <div className="bg-neutral-900/50 border border-neutral-800 p-6 rounded-3xl shadow-xl backdrop-blur-sm">
+              <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                <Activity className="w-5 h-5 text-red-500" /> Performance Fleet Anistour ({CURRENCY})
+              </h3>
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
+                    <XAxis dataKey="name" stroke="#525252" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700 }} />
+                    <YAxis stroke="#525252" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700 }} />
+                    <Tooltip
+                      cursor={{ fill: '#171717' }}
+                      contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid #262626', borderRadius: '12px' }}
+                      itemStyle={{ color: '#f5f5f5', fontSize: '12px', fontWeight: 600 }}
+                    />
+                    <Bar dataKey="revenus" fill="#059669" radius={[4, 4, 0, 0]} barSize={12} />
+                    <Bar dataKey="charges" fill="#dc2626" radius={[4, 4, 0, 0]} barSize={12} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="bg-neutral-900/50 border border-neutral-800 p-6 rounded-3xl shadow-xl backdrop-blur-sm">
             <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
@@ -66,7 +101,7 @@ const Dashboard: React.FC<DashboardProps> = ({ store }) => {
             </h3>
             <div className="space-y-3">
               {recentEntries.map(entry => {
-                const isRevenue = entry.type === EntryType.REVENUE;
+                const isRevenue = entry.type === EntryType.REVENUE || entry.type === EntryType.FUNDING;
                 const vehicle = store.vehicles.find(v => v.id === entry.vehicleId);
                 return (
                   <div key={entry.id} className="flex items-center justify-between p-4 bg-neutral-950 border border-neutral-800 rounded-2xl hover:border-neutral-700 transition-all">
@@ -75,7 +110,7 @@ const Dashboard: React.FC<DashboardProps> = ({ store }) => {
                         {isRevenue ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownLeft className="w-5 h-5" />}
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-neutral-200">{entry.designation}</p>
+                        <p className="text-sm font-bold text-neutral-200 truncate max-w-[150px]">{entry.description || entry.designation}</p>
                         <p className="text-[10px] text-neutral-500 uppercase font-black">{vehicle?.name || 'Agence'} • {new Date(entry.date).toLocaleDateString()}</p>
                       </div>
                     </div>
@@ -96,7 +131,7 @@ const Dashboard: React.FC<DashboardProps> = ({ store }) => {
               <span className="text-[10px] font-black text-red-500 animate-pulse">LIVE</span>
             </div>
             <div className="space-y-3">
-              {store.notifications.filter(n => n.isCritical).slice(0, 5).map(n => (
+              {store.notifications.filter(n => n.isCritical && !n.isArchived).slice(0, 5).map(n => (
                 <div key={n.id} className="p-4 bg-red-950/20 border border-red-900/50 rounded-2xl flex items-start gap-3">
                   <div className="w-2 h-2 mt-2 rounded-full bg-red-500 shrink-0" />
                   <div>
@@ -105,7 +140,7 @@ const Dashboard: React.FC<DashboardProps> = ({ store }) => {
                   </div>
                 </div>
               ))}
-              {store.notifications.length === 0 && <p className="text-xs text-neutral-600 italic text-center py-4">Aucune alerte en attente</p>}
+              {store.notifications.filter(n => n.isCritical && !n.isArchived).length === 0 && <p className="text-xs text-neutral-600 italic text-center py-4">Aucune alerte en attente</p>}
             </div>
           </div>
         </div>

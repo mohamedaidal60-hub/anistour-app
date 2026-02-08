@@ -84,6 +84,7 @@ export interface FinancialEntry {
   info?: string;
   designation?: string;
   userName?: string;
+  signature?: string;
   createdAt?: string;
 }
 

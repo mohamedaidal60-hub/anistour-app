@@ -3,6 +3,7 @@ import { useFleetStore } from '../store.ts';
 import { EntryType, FinancialEntry, MaintenanceStatus, UserRole } from '../types.ts';
 import { ShieldAlert, CheckCircle2, Camera, Wallet, Coins, Plus, Trash2 } from 'lucide-react';
 import { MAINTENANCE_TYPES, CURRENCY } from '../constants.ts';
+import SignaturePad from './SignaturePad.tsx';
 
 interface DailyEntryProps {
   store: ReturnType<typeof useFleetStore>;
@@ -18,6 +19,9 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
   const [mileage, setMileage] = useState('');
   const [proofPhoto, setProofPhoto] = useState<string | null>(null);
   const [usePersonalCaisse, setUsePersonalCaisse] = useState(false);
+  const [entryDate, setEntryDate] = useState(new Date().toISOString().split('T')[0]);
+  const [signature, setSignature] = useState<string | null>(null);
+  const [showSignaturePad, setShowSignaturePad] = useState(false);
 
   // Filter Logic for Vidange
   const [filters, setFilters] = useState<{ id: string, name: string, price: number }[]>([]);
@@ -83,7 +87,7 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
     if (activeForm === 'EXPENSE_GLOBAL') {
       const globalExp = {
         id: Date.now().toString(),
-        date: new Date().toISOString(),
+        date: entryDate,
         amount: Number(amount),
         description: description || 'Dépense Générale',
         category: 'AUTRE',
@@ -132,7 +136,7 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
         id: Date.now().toString(),
         vehicleId: vehicleId || undefined,
         cashDeskId: cashDeskId,
-        date: new Date().toISOString(),
+        date: entryDate,
         amount: Number(amount),
         type: activeForm === 'REVENUE' ? EntryType.REVENUE : expenseType,
         description: finalDescription,
@@ -141,6 +145,7 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
         status: status, // Crucial Change
         maintenanceType: expenseType === EntryType.EXPENSE_MAINTENANCE ? maintenanceType : undefined,
         proofPhoto: proofPhoto || undefined,
+        signature: signature || undefined,
         createdAt: new Date().toISOString()
       };
       await store.addEntry(entry);
@@ -161,6 +166,7 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
     setProofPhoto(null);
     setUsePersonalCaisse(false);
     setFilters([]);
+    setSignature(null);
   };
 
   return (
@@ -254,6 +260,16 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Left Side */}
                 <div className="space-y-6">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-neutral-500 uppercase tracking-widest px-1">Date de l'opération</label>
+                    <input
+                      type="date"
+                      required
+                      className="w-full bg-neutral-950 border border-neutral-800 p-3 rounded-xl focus:border-red-600 outline-none text-xs font-bold text-white shadow-lg transition-all"
+                      value={entryDate}
+                      onChange={(e) => setEntryDate(e.target.value)}
+                    />
+                  </div>
                   {activeForm !== 'EXPENSE_GLOBAL' && (
                     <div className="space-y-1">
                       <label className="text-[9px] font-black text-neutral-500 uppercase tracking-widest px-1">Véhicule</label>
@@ -427,6 +443,19 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
                       )}
                     </div>
                     <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-neutral-500 uppercase tracking-widest px-1">Signature Numérique</label>
+                      <div
+                        onClick={() => setShowSignaturePad(true)}
+                        className="border-2 border-dashed border-neutral-800 rounded-2xl p-4 flex flex-col items-center justify-center text-neutral-600 hover:text-white hover:border-white/50 cursor-pointer transition-all bg-neutral-950/50 h-24 group overflow-hidden"
+                      >
+                        {signature ? (
+                          <img src={signature} className="h-full object-contain invert" />
+                        ) : (
+                          <p className="text-[8px] font-black uppercase tracking-widest">Signer ici</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -443,6 +472,12 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
           )}
         </div>
       </div>
+      {showSignaturePad && (
+        <SignaturePad
+          onSave={(sig) => { setSignature(sig); setShowSignaturePad(false); }}
+          onClose={() => setShowSignaturePad(false)}
+        />
+      )}
     </div>
   );
 };
