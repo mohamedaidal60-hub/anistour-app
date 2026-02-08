@@ -152,6 +152,33 @@ const AdminValidation: React.FC<AdminValidationProps> = ({ store }) => {
                     </div>
                   </div>
 
+                  {/* INFO SECTION: Items & Signature */}
+                  {(request.info || request.signature) && (
+                    <div className="mx-6 mb-6 p-4 bg-neutral-950/50 border border-neutral-800 rounded-2xl flex flex-col md:flex-row gap-6">
+                      {request.info && (
+                        <div className="flex-1 space-y-2">
+                          <p className="text-[8px] font-black text-neutral-600 uppercase tracking-widest">Détails (Filtres/Pièces)</p>
+                          <div className="space-y-1">
+                            {JSON.parse(request.info).map((item: any, i: number) => (
+                              <div key={i} className="flex justify-between text-[10px] font-bold text-neutral-400">
+                                <span>• {item.name}</span>
+                                <span className="text-red-500">{item.price?.toLocaleString()} DA</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {request.signature && (
+                        <div className="shrink-0 space-y-2">
+                          <p className="text-[8px] font-black text-neutral-600 uppercase tracking-widest text-center">Certification Agent</p>
+                          <div className="bg-white/5 p-1 rounded-lg border border-neutral-800">
+                            <img src={request.signature} className="h-16 object-contain invert" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="flex flex-wrap gap-3 mt-auto pt-4 border-t border-neutral-800/50">
                     {isEditing ? (
                       <>

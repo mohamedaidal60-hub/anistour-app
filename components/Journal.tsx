@@ -282,7 +282,7 @@ const Journal: React.FC<JournalProps> = ({ store }) => {
                             {(!isAgent || entry.status === MaintenanceStatus.PENDING) && (
                               <button
                                 onClick={() => startEdit(entry)}
-                                className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-neutral-800 rounded-lg transition-all text-neutral-500 hover:text-white print:hidden"
+                                className="p-2 bg-neutral-800 hover:bg-red-700/20 hover:text-red-500 rounded-lg transition-all text-neutral-500 print:hidden border border-neutral-700 hover:border-red-900/40"
                                 title="Modifier"
                               >
                                 <Edit3 className="w-3.5 h-3.5" />

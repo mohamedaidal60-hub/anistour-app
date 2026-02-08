@@ -37,7 +37,8 @@ const App: React.FC = () => {
   }
 
   // Redirect Agent from Dashboard to Entry if needed
-  if (store.currentUser?.role === UserRole.AGENT && activeTab === 'dashboard') {
+  // Role Protection
+  if (store.currentUser?.role === UserRole.AGENT && (activeTab === 'dashboard' || activeTab === 'validation' || activeTab === 'users')) {
     setActiveTab('entry');
   }
 

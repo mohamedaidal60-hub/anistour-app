@@ -1,8 +1,14 @@
 import React, { useState, useRef } from 'react';
 import { useFleetStore } from '../store.ts';
 import { EntryType, FinancialEntry, MaintenanceStatus, UserRole } from '../types.ts';
-import { ShieldAlert, CheckCircle2, Camera, Wallet, Coins } from 'lucide-react';
+import { ShieldAlert, CheckCircle2, Camera, Wallet, Coins, Plus, Trash2 } from 'lucide-react';
 import { MAINTENANCE_TYPES, CURRENCY } from '../constants.ts';
+import SignaturePad from './SignaturePad.tsx';
+
+interface MaintenanceItem {
+  name: string;
+  price: number;
+}
 
 interface DailyEntryProps {
   store: ReturnType<typeof useFleetStore>;
@@ -18,6 +24,9 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
   const [mileage, setMileage] = useState('');
   const [proofPhoto, setProofPhoto] = useState<string | null>(null);
   const [usePersonalCaisse, setUsePersonalCaisse] = useState(false);
+  const [signature, setSignature] = useState<string | null>(null);
+  const [showSignaturePad, setShowSignaturePad] = useState(false);
+  const [maintenanceItems, setMaintenanceItems] = useState<MaintenanceItem[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [success, setSuccess] = useState(false);
 
@@ -87,6 +96,8 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
         status: activeForm === 'EXPENSE_VEHICLE' && expenseType === EntryType.EXPENSE_MAINTENANCE ? MaintenanceStatus.PENDING : MaintenanceStatus.APPROVED,
         maintenanceType: expenseType === EntryType.EXPENSE_MAINTENANCE ? maintenanceType : undefined,
         proofPhoto: proofPhoto || undefined,
+        signature: signature || undefined,
+        info: maintenanceItems.length > 0 ? JSON.stringify(maintenanceItems) : undefined,
         createdAt: new Date().toISOString()
       };
       await store.addEntry(entry);
@@ -105,6 +116,8 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
     setDescription('');
     setMileage('');
     setProofPhoto(null);
+    setSignature(null);
+    setMaintenanceItems([]);
     setUsePersonalCaisse(false);
   };
 
@@ -259,53 +272,145 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
                   </div>
 
                   {expenseType === EntryType.EXPENSE_MAINTENANCE && activeForm === 'EXPENSE_VEHICLE' && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Nature Entretien</label>
-                        <select
-                          className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl focus:border-red-600 outline-none text-sm font-bold text-white"
-                          value={maintenanceType}
-                          onChange={(e) => setMaintenanceType(e.target.value)}
-                        >
-                          {MAINTENANCE_TYPES.map(m => <option key={m} value={m}>{m}</option>)}
-                        </select>
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Nature Entretien</label>
+                          <select
+                            className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl focus:border-red-600 outline-none text-sm font-bold text-white"
+                            value={maintenanceType}
+                            onChange={(e) => setMaintenanceType(e.target.value)}
+                          >
+                            {MAINTENANCE_TYPES.map(m => <option key={m} value={m}>{m}</option>)}
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Index Compteur</label>
+                          <input
+                            required
+                            type="number"
+                            className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl outline-none focus:border-red-600 text-lg font-black text-red-500"
+                            value={mileage}
+                            onChange={(e) => setMileage(e.target.value)}
+                            placeholder="000000"
+                          />
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Index Compteur</label>
-                        <input
-                          required
-                          type="number"
-                          className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl outline-none focus:border-red-600 text-lg font-black text-red-500"
-                          value={mileage}
-                          onChange={(e) => setMileage(e.target.value)}
-                          placeholder="000000"
-                        />
+
+                      {/* Dynamic Maintenance Items (+) */}
+                      <div className="space-y-4 bg-neutral-950/50 p-6 rounded-[2rem] border border-neutral-800 shadow-inner">
+                        <div className="flex justify-between items-center mb-2">
+                          <h4 className="text-[10px] font-black text-neutral-400 uppercase tracking-widest px-1">Détails de l'entretien (Filtres, Pièces...)</h4>
+                          <button
+                            type="button"
+                            onClick={() => setMaintenanceItems([...maintenanceItems, { name: '', price: 0 }])}
+                            className="p-2 bg-red-700 hover:bg-red-600 text-white rounded-xl shadow-lg transition-all"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        {maintenanceItems.map((item, idx) => (
+                          <div key={idx} className="flex gap-2 items-center animate-in slide-in-from-left-2 duration-300">
+                            <input
+                              className="flex-1 bg-neutral-900 border border-neutral-800 p-3 rounded-xl text-xs font-bold text-white uppercase outline-none focus:border-red-600/50"
+                              placeholder="Désignation (ex: Filtre à Huile)"
+                              value={item.name}
+                              onChange={(e) => {
+                                const newItems = [...maintenanceItems];
+                                newItems[idx].name = e.target.value;
+                                setMaintenanceItems(newItems);
+                              }}
+                            />
+                            <div className="relative w-28">
+                              <input
+                                type="number"
+                                className="w-full bg-neutral-900 border border-neutral-800 p-3 rounded-xl text-xs font-black text-red-500 outline-none focus:border-red-600/50 pr-8"
+                                placeholder="Prix"
+                                value={item.price || ''}
+                                onChange={(e) => {
+                                  const newItems = [...maintenanceItems];
+                                  newItems[idx].price = Number(e.target.value);
+                                  setMaintenanceItems(newItems);
+                                  // Auto-calculate total amount
+                                  const total = newItems.reduce((sum, it) => sum + (it.price || 0), 0);
+                                  if (total > 0) setAmount(total.toString());
+                                }}
+                              />
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-neutral-600">DA</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newItems = maintenanceItems.filter((_, i) => i !== idx);
+                                setMaintenanceItems(newItems);
+                                const total = newItems.reduce((sum, it) => sum + (it.price || 0), 0);
+                                setAmount(total > 0 ? total.toString() : '');
+                              }}
+                              className="p-3 text-neutral-600 hover:text-red-500 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Preuve / Reçu (Photo)</label>
-                    <div
-                      onClick={() => fileInputRef.current?.click()}
-                      className="border-2 border-dashed border-neutral-800 rounded-3xl p-6 flex flex-col items-center justify-center text-neutral-600 hover:text-red-600 hover:border-red-500/50 cursor-pointer transition-all bg-neutral-950/50 h-32 group shadow-inner"
-                    >
-                      {proofPhoto ? (
-                        <div className="flex flex-col items-center">
-                          <CheckCircle2 className="w-8 h-8 text-emerald-500 mb-2" />
-                          <span className="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Document Chargé</span>
-                        </div>
-                      ) : (
-                        <>
-                          <Camera className="w-8 h-8 mb-2 group-hover:scale-110 transition-transform" />
-                          <span className="text-[9px] font-black uppercase tracking-widest">Prendre / Envoyer Photo</span>
-                        </>
-                      )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Preuve / Reçu (Photo)</label>
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="border-2 border-dashed border-neutral-800 rounded-3xl p-6 flex flex-col items-center justify-center text-neutral-600 hover:text-red-600 hover:border-red-500/50 cursor-pointer transition-all bg-neutral-950/50 h-32 group shadow-inner"
+                      >
+                        {proofPhoto ? (
+                          <div className="flex flex-col items-center">
+                            <CheckCircle2 className="w-8 h-8 text-emerald-500 mb-2" />
+                            <span className="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Document Chargé</span>
+                          </div>
+                        ) : (
+                          <>
+                            <Camera className="w-8 h-8 mb-2 group-hover:scale-110 transition-transform" />
+                            <span className="text-[9px] font-black uppercase tracking-widest">Prendre / Envoyer Photo</span>
+                          </>
+                        )}
+                      </div>
+                      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
                     </div>
-                    <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Certification (Signature)</label>
+                      <button
+                        type="button"
+                        onClick={() => setShowSignaturePad(true)}
+                        className={`w-full h-32 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center gap-2 transition-all ${signature ? 'bg-emerald-950/10 border-emerald-500/50 text-emerald-500' : 'bg-neutral-950 border-neutral-800 text-neutral-600 hover:border-red-500/50 hover:text-red-500'}`}
+                      >
+                        {signature ? (
+                          <>
+                            <img src={signature} className="h-20 object-contain invert opacity-80" />
+                            <span className="text-[8px] font-black uppercase tracking-widest font-black">Signé - Modifier ?</span>
+                          </>
+                        ) : (
+                          <>
+                            <div className="p-3 bg-neutral-900 rounded-2xl group-hover:bg-red-700/20 transition-all">
+                              <Plus className="w-6 h-6" />
+                            </div>
+                            <span className="text-[9px] font-black uppercase tracking-widest">Signer ici</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
+
+              {showSignaturePad && (
+                <SignaturePad
+                  onSave={(s) => { setSignature(s); setShowSignaturePad(false); }}
+                  onClose={() => setShowSignaturePad(false)}
+                />
+              )}
 
               <div className="pt-10">
                 <button

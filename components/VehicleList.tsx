@@ -469,7 +469,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 bg-black/90 backdrop-blur-md overflow-hidden">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-[2.5rem] w-full max-w-5xl h-[95vh] sm:h-[90vh] flex flex-col relative overflow-hidden shadow-2xl">
+      <div className="bg-neutral-900 border border-neutral-800 rounded-[2.5rem] w-full max-w-5xl h-[95vh] sm:h-[92vh] flex flex-col relative overflow-hidden shadow-2xl">
         {/* Premium Header */}
         <div className="relative shrink-0 border-b border-neutral-800 bg-neutral-950 px-8 py-10 overflow-hidden">
           <div className="absolute top-0 right-0 w-80 h-80 bg-red-900/10 blur-[100px] pointer-events-none"></div>
@@ -705,6 +705,39 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                   <p className="text-[10px] text-neutral-600 mt-6 italic font-medium leading-relaxed">
                     Calcul basé sur la mise en circulation le <span className="text-neutral-400">{new Date(vehicle.registrationDate).toLocaleDateString()}</span>
                   </p>
+                </div>
+              </div>
+
+              {/* Simulation Card */}
+              <div className="bg-neutral-950 border border-neutral-800 rounded-[2.5rem] p-10 relative overflow-hidden shadow-2xl">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-900/5 blur-[100px] pointer-events-none"></div>
+                <div className="flex flex-col lg:flex-row items-center gap-10 relative z-10">
+                  <div className="flex-1 space-y-6">
+                    <div>
+                      <h3 className="text-lg font-black text-white uppercase tracking-tighter mb-2">Simulateur de Sortie</h3>
+                      <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Estimez le profit final après vente</p>
+                    </div>
+                    <div className="space-y-3">
+                      <label className="text-[9px] font-black text-neutral-500 uppercase tracking-widest px-1">Prix de Revente Estimé ({CURRENCY})</label>
+                      <input
+                        type="number"
+                        className="w-full bg-neutral-900 border border-neutral-800 p-5 rounded-2xl outline-none focus:border-emerald-500 text-3xl font-black text-white shadow-inner"
+                        placeholder="0"
+                        value={simulatedResale}
+                        onChange={e => setSimulatedResale(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="w-full lg:w-96 p-8 bg-neutral-900 rounded-[2rem] border border-neutral-800 shadow-xl text-center">
+                    <p className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.2em] mb-4">Résultat Final Projeté</p>
+                    <p className={`text-4xl font-black ${projectedResult >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                      {(projectedResult ?? 0).toLocaleString()} <span className="text-sm text-neutral-600">DA</span>
+                    </p>
+                    <div className="mt-6 pt-6 border-t border-neutral-800">
+                      <p className="text-[9px] font-black text-neutral-600 uppercase tracking-widest">Calcul : (Revente + Marge) - Achat</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
