@@ -321,11 +321,21 @@ export function useFleetStore() {
     const operatingProfit = finalRevenue - finalTotalExpenses;
 
     // simulation: Purchase - Sale (or simulated) = Loss/Gain on Sale
-    const purchaseTotalOfSold = vehicles.filter(v => v.isArchived).reduce((sum, v) => sum + (v.purchasePrice || 0), 0);
-    const salesTotal = vehicles.filter(v => v.isArchived).reduce((sum, v) => sum + (v.salePrice || 0), 0);
+    const isAccountable = (saleDate?: string) => {
+      if (!saleDate) return false;
+      const d = new Date(saleDate);
+      const now = new Date();
+      // "Fin du mois prochain" : If sold in Feb, accountable after March 31
+      const accountableDate = new Date(d.getFullYear(), d.getMonth() + 2, 0);
+      return now > accountableDate;
+    };
+
+    const soldVehicles = vehicles.filter(v => v.isArchived && isAccountable(v.saleDate));
+    const purchaseTotalOfSold = soldVehicles.reduce((sum, v) => sum + (v.purchasePrice || 0), 0);
+    const salesTotal = soldVehicles.reduce((sum, v) => sum + (v.salePrice || 0), 0);
     const lossOnPastSales = purchaseTotalOfSold - salesTotal;
 
-    // Final Net Profit = Operating Profit - LossOnSale
+    // Final Net Profit = Operating Profit - lossOnPastSales
     const netProfit = operatingProfit - lossOnPastSales;
 
     const activeVehicles = vehicles.filter(v => !v.isArchived);
@@ -385,8 +395,9 @@ export function useFleetStore() {
       await supabase.from('entries').update({ status: MaintenanceStatus.REJECTED }).eq('id', id);
     },
     archiveVehicle: async (id: string, salePrice: number) => {
-      setVehicles(prev => prev.map(v => v.id === id ? { ...v, isArchived: true, salePrice } : v));
-      await supabase.from('vehicles').update({ isArchived: true, salePrice }).eq('id', id);
+      const saleDate = new Date().toISOString();
+      setVehicles(prev => prev.map(v => v.id === id ? { ...v, isArchived: true, salePrice, saleDate } : v));
+      await supabase.from('vehicles').update({ isArchived: true, salePrice, saleDate }).eq('id', id);
     },
     addUser: async (u: User) => {
       setUsers(prev => [...prev, u]);

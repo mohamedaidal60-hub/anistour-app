@@ -83,8 +83,16 @@ const Extra: React.FC<ExtraProps> = ({ store }) => {
         const operatingProfit = revenue - expenses;
 
         // Perte Vente = Prix Achat - Prix Vente (ou simulation)
-        const salePrice = v.isArchived ? (v.salePrice || 0) : (v.simulatedSalePrice || 0);
-        const saleLoss = v.purchasePrice - salePrice;
+        const isAccountable = (saleDate?: string) => {
+            if (!saleDate) return false;
+            const d = new Date(saleDate);
+            const now = new Date();
+            const accountableDate = new Date(d.getFullYear(), d.getMonth() + 2, 0);
+            return now > accountableDate;
+        };
+
+        const effectiveSalePrice = (v.isArchived && isAccountable(v.saleDate)) ? (v.salePrice || 0) : (v.simulatedSalePrice || 0);
+        const saleLoss = v.purchasePrice - effectiveSalePrice;
 
         const net = operatingProfit - saleLoss;
 
@@ -168,13 +176,15 @@ const Extra: React.FC<ExtraProps> = ({ store }) => {
                         </button>
                         <button
                             onClick={() => {
-                                if (confirm("ALERTE : Voulez-vous archiver et PURGER la base de données ? Assurez-vous d'avoir fait un Backup juste avant.")) {
+                                if (confirm("Voulez-vous clôturer la période et lancer la RÉPARTITION ? Les bénéfices actuels seront archivés dans l'historique global.")) {
                                     store.purgeDatabase();
                                 }
                             }}
-                            className="px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 justify-center text-red-500 animate-pulse hover:bg-red-900/20 border border-red-900/30"
+                            disabled={store.entries.length === 0 && store.globalExpenses.length === 0}
+                            className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 justify-center border border-red-900/30 ${store.entries.length === 0 && store.globalExpenses.length === 0 ? 'bg-neutral-900 text-neutral-600 border-neutral-800 cursor-not-allowed' : 'text-red-500 animate-pulse hover:bg-red-900/20'}`}
+                            title={store.entries.length === 0 && store.globalExpenses.length === 0 ? "Aucune nouvelle saisie à répartir" : "Clôturer et Répartir"}
                         >
-                            <Database className="w-4 h-4" /> Archivage & Purge
+                            <Database className="w-4 h-4" /> Répartition & Archivage
                         </button>
                     </div>
                 )}

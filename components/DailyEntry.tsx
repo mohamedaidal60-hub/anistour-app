@@ -156,15 +156,13 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
             >
               Véhicule
             </button>
-            {store.currentUser?.role === UserRole.ADMIN && (
-              <button
-                onClick={() => { setActiveForm('EXPENSE_GLOBAL'); resetForm(); }}
-                type="button"
-                className={`py-5 px-2 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all border ${activeForm === 'EXPENSE_GLOBAL' ? 'bg-red-900/40 border-red-800 text-neutral-400 text-white shadow-xl translate-y-[-2px]' : 'bg-neutral-950 border-neutral-800 text-neutral-500 hover:border-neutral-700 hover:text-neutral-300'}`}
-              >
-                Charge Agence
-              </button>
-            )}
+            <button
+              onClick={() => { setActiveForm('EXPENSE_GLOBAL'); resetForm(); }}
+              type="button"
+              className={`py-5 px-2 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all border ${activeForm === 'EXPENSE_GLOBAL' ? 'bg-red-900/40 border-red-800 text-neutral-400 text-white shadow-xl translate-y-[-2px]' : 'bg-neutral-950 border-neutral-800 text-neutral-500 hover:border-neutral-700 hover:text-neutral-300'}`}
+            >
+              Charge Agence
+            </button>
           </div>
         </div>
 

@@ -56,6 +56,7 @@ export interface Vehicle {
   mileageUpdatedBy?: string;
   isArchived: boolean;
   salePrice?: number;
+  saleDate?: string;
   simulatedSalePrice?: number;
   maintenanceConfigs: MaintenanceConfig[];
   documents?: VehicleDocument[];
