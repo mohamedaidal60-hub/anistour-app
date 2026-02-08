@@ -24,25 +24,32 @@ const Caisse: React.FC<CaisseProps> = ({ store }) => {
     const deskEntries = store.entries.filter((e: FinancialEntry) => e.cashDeskId === selectedDeskId);
     const sortedEntries = [...deskEntries].sort((a, b) => b.date.localeCompare(a.date));
 
+    const [isFunding, setIsFunding] = useState(false);
+
     const handleFunding = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedDeskId || !fundAmount) return;
+        if (!selectedDeskId || !fundAmount || isFunding) return;
 
-        const entry: FinancialEntry = {
-            id: `fund-${Date.now()}`,
-            cashDeskId: selectedDeskId,
-            date: new Date().toISOString().split('T')[0],
-            amount: Number(fundAmount),
-            type: EntryType.FUNDING,
-            description: fundDescription,
-            agentName: store.currentUser?.name || 'Admin',
-            status: MaintenanceStatus.APPROVED,
-            createdAt: new Date().toISOString()
-        };
+        setIsFunding(true);
+        try {
+            const entry: FinancialEntry = {
+                id: `fund-${Date.now()}`,
+                cashDeskId: selectedDeskId,
+                date: new Date().toISOString().split('T')[0],
+                amount: Number(fundAmount),
+                type: EntryType.FUNDING,
+                description: fundDescription,
+                agentName: store.currentUser?.name || 'Admin',
+                status: MaintenanceStatus.APPROVED,
+                createdAt: new Date().toISOString()
+            };
 
-        await store.addEntry(entry);
-        setFundAmount('');
-        setShowFundModal(false);
+            await store.addEntry(entry);
+            setFundAmount('');
+            setShowFundModal(false);
+        } finally {
+            setIsFunding(false);
+        }
     };
 
     return (
@@ -94,9 +101,10 @@ const Caisse: React.FC<CaisseProps> = ({ store }) => {
                                 {isAdmin && (
                                     <button
                                         onClick={() => setShowFundModal(true)}
-                                        className="flex-1 py-5 bg-white text-black rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-neutral-200 transition-all active:scale-95 shadow-xl"
+                                        disabled={isFunding}
+                                        className={`flex-1 py-5 bg-white text-black rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-neutral-200 transition-all active:scale-95 shadow-xl ${isFunding ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     >
-                                        Alimenter la caisse
+                                        {isFunding ? 'Traitement...' : 'Alimenter la caisse'}
                                     </button>
                                 )}
                             </div>

@@ -1,29 +1,51 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useFleetStore } from '../store.ts';
-import { Plus, Wallet, TrendingDown, Users } from 'lucide-react';
+import { Plus, Wallet, TrendingDown, Users, Camera, Upload, X, Save } from 'lucide-react';
 import { GlobalExpense } from '../types.ts';
 
 const GlobalExpenses: React.FC<{ store: any }> = ({ store }) => {
     const [showForm, setShowForm] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [newExpense, setNewExpense] = useState({
         type: 'LOYER',
         amount: '',
         date: new Date().toISOString().split('T')[0],
-        description: ''
+        description: '',
+        proofPhoto: null as string | null
     });
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const expense: GlobalExpense = {
-            id: crypto.randomUUID(),
-            type: newExpense.type,
-            amount: parseFloat(newExpense.amount),
-            date: newExpense.date,
-            description: newExpense.description
-        };
-        await store.addGlobalExpense(expense);
-        setShowForm(false);
-        setNewExpense({ type: 'LOYER', amount: '', date: new Date().toISOString().split('T')[0], description: '' });
+        if (isSubmitting) return;
+
+        setIsSubmitting(true);
+        try {
+            const expense: GlobalExpense = {
+                id: crypto.randomUUID(),
+                type: newExpense.type,
+                amount: parseFloat(newExpense.amount),
+                date: newExpense.date,
+                description: newExpense.description,
+                proofPhoto: newExpense.proofPhoto || undefined,
+                agentName: store.currentUser?.name,
+                cashDeskId: store.cashDesks[0]?.id // Default to Agency Caisse
+            };
+            await store.addGlobalExpense(expense);
+            setShowForm(false);
+            setNewExpense({ type: 'LOYER', amount: '', date: new Date().toISOString().split('T')[0], description: '', proofPhoto: null });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => setNewExpense(prev => ({ ...prev, proofPhoto: reader.result as string }));
+            reader.readAsDataURL(file);
+        }
     };
 
     const stats = store.getFinancialStats();
@@ -128,7 +150,7 @@ const GlobalExpenses: React.FC<{ store: any }> = ({ store }) => {
                                 <input
                                     type="date"
                                     required
-                                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-3 text-sm focus:border-red-600 outline-none"
+                                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-3 text-sm focus:border-red-600 outline-none"
                                     value={newExpense.date}
                                     onChange={e => setNewExpense({ ...newExpense, date: e.target.value })}
                                 />
@@ -137,11 +159,38 @@ const GlobalExpenses: React.FC<{ store: any }> = ({ store }) => {
                             <div className="space-y-1">
                                 <label className="text-xs font-bold text-neutral-500">Description</label>
                                 <textarea
-                                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-3 text-sm focus:border-red-600 outline-none h-24 resize-none"
+                                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-3 text-sm focus:border-red-600 outline-none h-24 resize-none"
                                     value={newExpense.description}
                                     onChange={e => setNewExpense({ ...newExpense, description: e.target.value })}
                                     placeholder="Détails de la dépense..."
                                 />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Justificatif (Photo)</label>
+                                <div
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="border-2 border-dashed border-neutral-800 rounded-2xl p-4 flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-red-600 hover:bg-neutral-950/50 transition-all min-h-[140px] relative overflow-hidden"
+                                >
+                                    {newExpense.proofPhoto ? (
+                                        <>
+                                            <img src={newExpense.proofPhoto} className="absolute inset-0 w-full h-full object-cover opacity-40" />
+                                            <div className="relative z-10 flex flex-col items-center gap-2">
+                                                <div className="bg-red-600 p-2 rounded-full shadow-lg"><Save className="w-5 h-5 text-white" /></div>
+                                                <p className="text-[10px] font-black text-white uppercase tracking-widest bg-black/50 px-3 py-1 rounded-full">Changer la Photo</p>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="bg-neutral-800 p-4 rounded-full"><Camera className="w-8 h-8 text-neutral-500" /></div>
+                                            <div className="text-center">
+                                                <p className="text-[10px] font-black text-neutral-300 uppercase tracking-widest">Scanner le reçu</p>
+                                                <p className="text-[8px] text-neutral-600 font-bold mt-1">CLIQUEZ POUR CAPTURER</p>
+                                            </div>
+                                        </>
+                                    )}
+                                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" capture="environment" />
+                                </div>
                             </div>
 
                             <div className="flex gap-3 pt-4">
@@ -154,9 +203,11 @@ const GlobalExpenses: React.FC<{ store: any }> = ({ store }) => {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 bg-red-700 hover:bg-red-600 text-white py-3 rounded-xl text-sm font-bold transition-colors"
+                                    disabled={isSubmitting}
+                                    className={`flex-1 bg-red-700 hover:bg-red-600 text-white py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-50' : ''}`}
                                 >
-                                    Ajouter
+                                    {isSubmitting ? '...' : <Plus className="w-4 h-4" />}
+                                    {isSubmitting ? 'En cours' : 'Ajouter'}
                                 </button>
                             </div>
                         </form>
@@ -165,35 +216,59 @@ const GlobalExpenses: React.FC<{ store: any }> = ({ store }) => {
             )}
 
             {/* List */}
-            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden">
+            <div className="bg-neutral-900 border border-neutral-800 rounded-[2.5rem] overflow-hidden shadow-2xl">
                 <table className="w-full text-sm text-left">
                     <thead className="bg-neutral-950 text-neutral-500 border-b border-neutral-800">
                         <tr>
-                            <th className="p-4 font-bold uppercase text-[10px] tracking-widest">Date</th>
-                            <th className="p-4 font-bold uppercase text-[10px] tracking-widest">Type</th>
-                            <th className="p-4 font-bold uppercase text-[10px] tracking-widest">Description</th>
-                            <th className="p-4 font-bold uppercase text-[10px] tracking-widest text-right">Montant</th>
+                            <th className="p-6 font-black uppercase text-[10px] tracking-widest">Date & Justif</th>
+                            <th className="p-6 font-black uppercase text-[10px] tracking-widest">Classification</th>
+                            <th className="p-6 font-black uppercase text-[10px] tracking-widest">Détails de l'opération</th>
+                            <th className="p-6 font-black uppercase text-[10px] tracking-widest text-right">Montant</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-800">
                         {store.globalExpenses.map((ex: GlobalExpense) => (
-                            <tr key={ex.id} className="hover:bg-neutral-800/50 transition-colors">
-                                <td className="p-4 font-mono text-neutral-400">{ex.date}</td>
-                                <td className="p-4">
-                                    <span className="px-2 py-1 bg-neutral-800 rounded text-xs font-bold border border-neutral-700">
+                            <tr key={ex.id} className="hover:bg-neutral-800/30 transition-colors group">
+                                <td className="p-6">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 bg-neutral-950 rounded-xl overflow-hidden border border-neutral-800 flex items-center justify-center shrink-0">
+                                            {ex.proofPhoto ? (
+                                                <img
+                                                    src={ex.proofPhoto}
+                                                    className="w-full h-full object-cover cursor-pointer hover:scale-110 transition-transform"
+                                                    onClick={() => {
+                                                        const w = window.open('about:blank');
+                                                        if (w) { w.document.write(`<img src="${ex.proofPhoto}"/>`); w.document.close(); }
+                                                    }}
+                                                />
+                                            ) : (
+                                                <Camera className="w-5 h-5 text-neutral-800" />
+                                            )}
+                                        </div>
+                                        <p className="font-mono text-[11px] text-neutral-400">{ex.date}</p>
+                                    </div>
+                                </td>
+                                <td className="p-6">
+                                    <span className="px-4 py-1.5 bg-neutral-950 rounded-full text-[9px] font-black uppercase tracking-widest border border-neutral-800 text-neutral-500">
                                         {ex.type}
                                     </span>
                                 </td>
-                                <td className="p-4 text-neutral-300">{ex.description}</td>
-                                <td className="p-4 text-right font-bold text-red-400">
-                                    - {formatMoney(ex.amount)}
+                                <td className="p-6">
+                                    <p className="font-bold text-neutral-200 uppercase text-xs truncate max-w-[300px]">{ex.description || 'Sans description'}</p>
+                                    <p className="text-[9px] text-neutral-500 font-bold uppercase tracking-widest mt-1">Par : {ex.agentName || 'Admin'}</p>
+                                </td>
+                                <td className="p-6 text-right">
+                                    <p className="text-xl font-black text-red-500">
+                                        -{ex.amount.toLocaleString()} <span className="text-[10px] text-neutral-600">DA</span>
+                                    </p>
                                 </td>
                             </tr>
                         ))}
                         {store.globalExpenses.length === 0 && (
                             <tr>
-                                <td colSpan={4} className="p-8 text-center text-neutral-500">
-                                    Aucune charge enregistrée
+                                <td colSpan={4} className="p-20 text-center">
+                                    <TrendingDown className="w-12 h-12 text-neutral-800 mx-auto mb-4" />
+                                    <p className="text-[10px] font-black text-neutral-600 uppercase tracking-widest">Aucune charge enregistrée</p>
                                 </td>
                             </tr>
                         )}

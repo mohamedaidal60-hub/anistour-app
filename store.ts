@@ -245,6 +245,9 @@ export function useFleetStore() {
 
   const addGlobalExpense = async (ge: GlobalExpense) => {
     setGlobalExpenses(prev => [ge, ...prev]);
+    if (ge.cashDeskId) {
+      await updateCashDeskBalance(ge.cashDeskId, ge.amount, EntryType.EXPENSE_SIMPLE);
+    }
     const { error } = await supabase.from('global_expenses').insert([ge]);
     if (error) console.error("DB Error (Global Expense):", error);
   };
@@ -307,20 +310,23 @@ export function useFleetStore() {
     const revenue = validEntries.filter(e => e.type === EntryType.REVENUE).reduce((sum, e) => sum + (e.amount || 0), 0);
     const vehicleExpenses = validEntries.filter(e => e.type !== EntryType.REVENUE && e.type !== EntryType.FUNDING).reduce((sum, e) => sum + (e.amount || 0), 0);
     const globalTotal = globalExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-    const purchaseTotalOfSold = vehicles.filter(v => v.isArchived).reduce((sum, v) => sum + (v.purchasePrice || 0), 0);
-    const salesTotal = vehicles.filter(v => v.isArchived).reduce((sum, v) => sum + (v.salePrice || 0), 0);
-    const totalExpenses = vehicleExpenses + globalTotal;
-    // Perte Vente = Prix Achat - Prix Vente
-    // Bénéfice Net Global = Bénéfice - Perte Vente
-    const lossOnPastSales = purchaseTotalOfSold - salesTotal;
 
-    // Include Historical Stats in totals
     const carryRevenue = historicalStats?.accumulatedRevenue || 0;
     const carryExpenses = historicalStats?.accumulatedExpenses || 0;
 
     const finalRevenue = revenue + carryRevenue;
-    const finalTotalExpenses = totalExpenses + carryExpenses;
-    const netProfit = finalRevenue - finalTotalExpenses - lossOnPastSales;
+    const finalTotalExpenses = vehicleExpenses + globalTotal + carryExpenses;
+
+    // accounting: Revenue - Expenses = Operating Profit
+    const operatingProfit = finalRevenue - finalTotalExpenses;
+
+    // simulation: Purchase - Sale (or simulated) = Loss/Gain on Sale
+    const purchaseTotalOfSold = vehicles.filter(v => v.isArchived).reduce((sum, v) => sum + (v.purchasePrice || 0), 0);
+    const salesTotal = vehicles.filter(v => v.isArchived).reduce((sum, v) => sum + (v.salePrice || 0), 0);
+    const lossOnPastSales = purchaseTotalOfSold - salesTotal;
+
+    // Final Net Profit = Operating Profit - LossOnSale
+    const netProfit = operatingProfit - lossOnPastSales;
 
     const activeVehicles = vehicles.filter(v => !v.isArchived);
     // Mature vehicles = vehicles past their purchase month for average calculations
@@ -464,26 +470,38 @@ export function useFleetStore() {
       URL.revokeObjectURL(url);
     },
     purgeDatabase: async () => {
-      if (!confirm("ATTENTION : Cette action va archiver les montants actuels et purger les opérations CLOUD. Les véhicules et utilisateurs actifs resteront. Vérifiez votre Backup avant. Continuer ?")) {
+      if (!confirm("ATTENTION : Cette action va archiver les montants actuels, purger les opérations CLOUD et DÉSACTIVER les comptes inactifs (>60 jours). Les véhicules actifs resteront. Vérifiez votre Backup avant. Continuer ?")) {
         return;
       }
 
       setIsCloudSyncing(true);
       try {
         const stats = getFinancialStats();
-
-        // 1. Update Historical Stats (Carry Forward)
+        // Carry forward: current historical + (current period totals)
         const newHistorical: Partial<HistoricalStats> = {
-          accumulatedRevenue: (historicalStats?.accumulatedRevenue || 0) + (stats.revenue - (historicalStats?.accumulatedRevenue || 0)),
-          accumulatedExpenses: (historicalStats?.accumulatedExpenses || 0) + (stats.totalExpenses - (historicalStats?.accumulatedExpenses || 0)),
+          accumulatedRevenue: (historicalStats?.accumulatedRevenue || 0) + (stats.revenue),
+          accumulatedExpenses: (historicalStats?.accumulatedExpenses || 0) + (stats.expenses + globalExpenses.reduce((s, e) => s + (e.amount || 0), 0)),
           accumulatedProfit: stats.netProfit,
           lastPurgeDate: new Date().toISOString()
         };
 
-        // We use upsert for historical stats (assuming ID 'global')
         await supabase.from('historical_stats').upsert([{ id: 'global', ...newHistorical }]);
 
-        // 2. Delete entries, global_expenses, notifications, messages (Keeping Vehicles and Users)
+        // Deactivate inactive users (60 days)
+        const sixtyDaysAgo = new Date();
+        sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
+        const inactiveUsers = users.filter(u => {
+          if (u.role === UserRole.ADMIN) return false;
+          if (!u.lastLogin) return true; // Never logged in
+          return new Date(u.lastLogin) < sixtyDaysAgo;
+        });
+
+        for (const u of inactiveUsers) {
+          await supabase.from('users').update({ isActive: false }).eq('id', u.id);
+        }
+
+        // Purge transactional data only
         await supabase.from('entries').delete().neq('id', '0');
         await supabase.from('global_expenses').delete().neq('id', '0');
         await supabase.from('notifications').delete().neq('id', '0');
@@ -494,7 +512,7 @@ export function useFleetStore() {
         setNotifications([]);
         setMessages([]);
 
-        alert("Base de données purgée. Les totaux ont été reportés dans l'historique.");
+        alert(`${inactiveUsers.length} comptes inactifs ont été désactivés. Base de données purgée.`);
         fetchData();
       } catch (e) {
         console.error(e);

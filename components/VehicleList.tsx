@@ -469,7 +469,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 bg-black/90 backdrop-blur-md overflow-hidden">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-[2.5rem] w-full max-w-5xl h-[95vh] sm:h-[92vh] flex flex-col relative overflow-hidden shadow-2xl">
+      <div className="bg-neutral-900 border border-neutral-800 rounded-[2.5rem] w-full max-w-5xl h-[95vh] sm:h-[90vh] flex flex-col relative overflow-hidden shadow-2xl">
         {/* Premium Header */}
         <div className="relative shrink-0 border-b border-neutral-800 bg-neutral-950 px-8 py-10 overflow-hidden">
           <div className="absolute top-0 right-0 w-80 h-80 bg-red-900/10 blur-[100px] pointer-events-none"></div>
@@ -518,11 +518,11 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-8 bg-neutral-900 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-neutral-900 custom-scrollbar pb-20">
           {tab === 'carnet' ? (
-            <div className="space-y-10">
+            <div className="space-y-8 sm:space-y-10">
               {/* Mileage Update */}
-              <div className="bg-neutral-950 border border-neutral-800 rounded-3xl p-8 relative overflow-hidden shadow-xl">
+              <div className="bg-neutral-950 border border-neutral-800 rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-xl">
                 <div className="flex flex-col sm:flex-row items-end gap-6 relative z-10">
                   <div className="flex-1 w-full space-y-3">
                     <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Mettre à jour le compteur (KM)</label>
@@ -530,7 +530,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                       type="number"
                       defaultValue={vehicle.lastMileage}
                       id={`mileage-update-${vehicle.id}`}
-                      className="w-full bg-neutral-900 border border-neutral-800 p-5 rounded-2xl outline-none focus:border-red-600 text-3xl font-black text-white shadow-inner"
+                      className="w-full bg-neutral-900 border border-neutral-800 p-4 sm:p-5 rounded-2xl outline-none focus:border-red-600 text-2xl sm:text-3xl font-black text-white shadow-inner"
                     />
                   </div>
                   <button
@@ -541,7 +541,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                         alert('Index mis à jour.');
                       } else alert('Inférieur à l\'index actuel.');
                     }}
-                    className="w-full sm:w-auto px-10 py-6 bg-red-700 hover:bg-red-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.15em] transition-all active:scale-95 shadow-xl shadow-red-900/30"
+                    className="w-full sm:w-auto px-10 py-5 sm:py-6 bg-red-700 hover:bg-red-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.15em] transition-all active:scale-95 shadow-xl shadow-red-900/30 border border-red-600"
                   >
                     Mise à jour
                   </button>
@@ -551,14 +551,14 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
               {/* Maintenance Grid */}
               <div className="space-y-6">
                 <div className="flex justify-between items-center px-2">
-                  <h3 className="text-xs font-black text-neutral-500 uppercase tracking-[0.3em]">Plan d'Entretien Actif</h3>
+                  <h3 className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.3em]">Plan d'Entretien Actif</h3>
                   {isAdmin && (
                     <button onClick={() => setEditingConfig(!editingConfig)} className="text-[10px] font-black uppercase tracking-widest text-red-500 hover:text-red-400">
                       {editingConfig ? 'Terminer' : 'Ajuster les Échéances'}
                     </button>
                   )}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                   {(editingConfig ? tempConfigs : (vehicle.maintenanceConfigs || [])).map((cfg, idx) => {
                     const remaining = (cfg.nextDueKm ?? 0) - (vehicle.lastMileage ?? 0);
                     const isUrgent = remaining < 1000;
@@ -568,28 +568,28 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                         <div className="flex justify-between items-start mb-6">
                           <div>
                             <p className="text-[8px] font-black text-neutral-600 uppercase tracking-widest mb-1">Maintenance</p>
-                            <h4 className="text-sm font-black text-neutral-100 uppercase tracking-tight">{cfg.type}</h4>
+                            <h4 className="text-xs font-black text-neutral-100 uppercase tracking-tight">{cfg.type}</h4>
                           </div>
                           {isUrgent && <AlertCircle className="w-5 h-5 text-red-600 animate-pulse" />}
                         </div>
                         <div className="grid grid-cols-2 gap-4 mb-6">
                           <div>
-                            <p className="text-[8px] text-neutral-600 uppercase font-black">Intervalle</p>
-                            <p className="text-xs font-black text-neutral-200">{(cfg.intervalKm ?? 0).toLocaleString()} KM</p>
+                            <p className="text-[8px] text-neutral-600 uppercase font-black text-[7px]">Intervalle</p>
+                            <p className="text-[11px] font-black text-neutral-200">{(cfg.intervalKm ?? 0).toLocaleString()} KM</p>
                           </div>
                           <div>
-                            <p className="text-[8px] text-neutral-600 uppercase font-black">Prochain</p>
-                            <p className={`text-xs font-black ${isUrgent ? 'text-red-500' : 'text-neutral-200'}`}>{(cfg.nextDueKm ?? 0).toLocaleString()} KM</p>
+                            <p className="text-[8px] text-neutral-600 uppercase font-black text-[7px]">Prochain</p>
+                            <p className={`text-[11px] font-black ${isUrgent ? 'text-red-500' : 'text-neutral-200'}`}>{(cfg.nextDueKm ?? 0).toLocaleString()} KM</p>
                           </div>
                         </div>
                         <div className="space-y-2">
                           <div className="flex justify-between items-baseline">
-                            <span className={`text-[9px] font-black uppercase ${remaining < 0 ? 'text-red-500' : 'text-neutral-500'}`}>
+                            <span className={`text-[8px] font-black uppercase ${remaining < 0 ? 'text-red-500' : 'text-neutral-500'}`}>
                               {remaining < 0 ? 'Dépassement' : 'Reste'}
                             </span>
-                            <span className={`text-xs font-black ${remaining < 0 ? 'text-red-500' : 'text-neutral-200'}`}>{(Math.abs(remaining) ?? 0).toLocaleString()} KM</span>
+                            <span className={`text-[10px] font-black ${remaining < 0 ? 'text-red-500' : 'text-neutral-200'}`}>{(Math.abs(remaining) ?? 0).toLocaleString()} KM</span>
                           </div>
-                          <div className="h-2 bg-neutral-900 rounded-full overflow-hidden shadow-inner">
+                          <div className="h-1.5 bg-neutral-900 rounded-full overflow-hidden shadow-inner">
                             <div className={`h-full transition-all duration-1000 ${isUrgent ? 'bg-red-600' : 'bg-red-900'}`} style={{ width: `${progress}%` }} />
                           </div>
                         </div>
@@ -599,129 +599,85 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                 </div>
               </div>
 
-              {/* History List - FULL DETAILS AS REQUESTED */}
-              <div className="bg-neutral-950 border border-neutral-800 rounded-[2.5rem] p-10 shadow-2xl">
-                <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-6 mb-8">
-                  <h3 className="text-lg font-black uppercase tracking-tighter text-white">Journal des Opérations</h3>
-                  <div className="relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" />
-                    <input
-                      type="text"
-                      placeholder="Filtrer l'historique..."
-                      className="pl-12 pr-6 py-3 bg-neutral-900 border border-neutral-800 rounded-2xl text-xs outline-none focus:border-red-600 w-full sm:w-64 font-bold text-white transition-all"
-                      value={filterText}
-                      onChange={e => setFilterText(e.target.value)}
-                    />
+              {/* Journal - Only for Admins */}
+              {isAdmin && (
+                <div className="space-y-6">
+                  <h3 className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.3em] px-2">Flux Historique (Détails)</h3>
+                  <div className="bg-neutral-950 border border-neutral-800 rounded-2xl overflow-hidden shadow-2xl">
+                    <table className="w-full text-left">
+                      <thead className="bg-neutral-900 text-[8px] font-black text-neutral-500 uppercase tracking-widest">
+                        <tr>
+                          <th className="px-5 py-3">Date</th>
+                          <th className="px-5 py-3">Opération</th>
+                          <th className="px-5 py-3 text-right">Montant</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-neutral-800">
+                        {entries.filter(e => e.vehicleId === vehicle.id && e.status !== MaintenanceStatus.REJECTED).slice(0, 15).map(e => (
+                          <tr key={e.id} className="text-[10px] font-black uppercase tracking-tight hover:bg-neutral-900/50 transition-colors">
+                            <td className="px-5 py-4 text-neutral-600">{new Date(e.date).toLocaleDateString()}</td>
+                            <td className="px-5 py-4 text-neutral-200">{e.description || e.designation}</td>
+                            <td className={`px-5 py-4 text-right ${e.type === EntryType.REVENUE ? 'text-emerald-500' : 'text-neutral-100'}`}>
+                              {e.type === EntryType.REVENUE ? '+' : '-'}{e.amount.toLocaleString()} <span className="text-[7px] text-neutral-600">DA</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-
-                <div className="space-y-4">
-                  {filteredEntries.length === 0 ? (
-                    <div className="py-20 text-center border-2 border-dashed border-neutral-900 rounded-[2rem]">
-                      <FileText className="w-12 h-12 text-neutral-800 mx-auto mb-4" />
-                      <p className="text-neutral-600 text-xs font-black uppercase tracking-widest">Aucun historique disponible</p>
-                    </div>
-                  ) : (
-                    filteredEntries.map((e: FinancialEntry) => (
-                      <div key={e.id} className="group bg-neutral-900/40 border border-neutral-800 hover:border-neutral-700 p-6 rounded-[1.5rem] transition-all flex flex-col md:flex-row gap-6 items-start md:items-center">
-                        <div className="flex flex-col items-center justify-center w-20 h-20 bg-neutral-950 rounded-[1.2rem] border border-neutral-800 shrink-0">
-                          <p className="text-[14px] font-black text-white">{new Date(e.date).getDate()}</p>
-                          <p className="text-[8px] font-black text-neutral-600 uppercase">{new Date(e.date).toLocaleString('fr-FR', { month: 'short' })}</p>
-                          <p className="text-[9px] font-black text-red-500 mt-1">{new Date(e.createdAt || e.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            {e.type === EntryType.REVENUE ? (
-                              <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-lg shadow-emerald-900/20" />
-                            ) : (
-                              <div className="w-2 h-2 rounded-full bg-red-600 shadow-lg shadow-red-900/20" />
-                            )}
-                            <h4 className="text-sm font-black text-neutral-100 uppercase tracking-tight truncate group-hover:text-red-500 transition-colors">
-                              {e.description || e.designation || 'Sans description'}
-                            </h4>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 opacity-60">
-                            <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-neutral-400">
-                              <User className="w-3 h-3 text-red-600" />
-                              <span>Agent : <span className="text-neutral-100">{e.agentName || 'Système'}</span></span>
-                            </div>
-                            <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-neutral-400">
-                              <Ruler className="w-3 h-3 text-red-600" />
-                              <span>Index : <span className="text-neutral-100">{(e.mileageAtEntry || 0).toLocaleString()} KM</span></span>
-                            </div>
-                            {e.maintenanceType && (
-                              <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-amber-500">
-                                <Wrench className="w-3 h-3" />
-                                <span>{e.maintenanceType}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="text-right shrink-0 w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-neutral-800">
-                          <p className={`text-xl font-black ${e.type === EntryType.REVENUE ? 'text-emerald-500' : 'text-neutral-200'}`}>
-                            {e.type === EntryType.REVENUE ? '+' : '-'}{(e.amount || 0).toLocaleString()} <span className="text-[10px] text-neutral-600">{CURRENCY}</span>
-                          </p>
-                          <p className="text-[8px] font-black text-neutral-600 uppercase mt-1 tracking-[0.2em]">{e.type}</p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
+              )}
             </div>
           ) : (
-            <div className="space-y-10">
+            <div className="space-y-8 sm:space-y-10">
               {/* Financial Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-neutral-950 p-10 rounded-[2.5rem] border border-neutral-800 relative overflow-hidden shadow-2xl">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+                <div className="bg-neutral-950 p-8 sm:p-10 rounded-[2rem] sm:rounded-[2.5rem] border border-neutral-800 relative overflow-hidden shadow-2xl">
                   <div className="absolute top-0 right-0 p-4 opacity-5"><Calculator className="w-32 h-32 text-white" /></div>
-                  <h3 className="text-xs font-black text-neutral-500 uppercase tracking-widest mb-6">Marge Nette (Exploitation)</h3>
-                  <p className={`text-5xl font-black mb-4 ${netProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                    {(netProfit ?? 0).toLocaleString()} <span className="text-xl text-neutral-600">{CURRENCY}</span>
+                  <h3 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-6">Marge d'Exploitation Nette</h3>
+                  <p className={`text-4xl sm:text-5xl font-black mb-4 ${netProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                    {(netProfit ?? 0).toLocaleString()} <span className="text-lg sm:text-xl text-neutral-600">{CURRENCY}</span>
                   </p>
-                  <div className="grid grid-cols-2 gap-6 mt-8 p-6 bg-neutral-900/50 rounded-3xl border border-neutral-800">
+                  <div className="grid grid-cols-2 gap-4 sm:gap-6 mt-8 p-6 bg-neutral-900/50 rounded-3xl border border-neutral-800">
                     <div>
-                      <p className="text-[9px] uppercase font-black text-neutral-600 tracking-widest mb-1">Revenus</p>
-                      <p className="text-xl font-black text-emerald-500">{(totalRevenue ?? 0).toLocaleString()}</p>
+                      <p className="text-[8px] uppercase font-black text-neutral-600 tracking-widest mb-1">Revenus Total</p>
+                      <p className="text-lg font-black text-emerald-500">{(totalRevenue ?? 0).toLocaleString()}</p>
                     </div>
                     <div>
-                      <p className="text-[9px] uppercase font-black text-neutral-600 tracking-widest mb-1">Charges</p>
-                      <p className="text-xl font-black text-red-500">{(totalExpenses ?? 0).toLocaleString()}</p>
+                      <p className="text-[8px] uppercase font-black text-neutral-600 tracking-widest mb-1">Charges Directes</p>
+                      <p className="text-lg font-black text-red-500">{(totalExpenses ?? 0).toLocaleString()}</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-neutral-950 p-10 rounded-[2.5rem] border border-neutral-800 flex flex-col justify-center shadow-2xl">
+                <div className="bg-neutral-950 p-8 sm:p-10 rounded-[2rem] sm:rounded-[2.5rem] border border-neutral-800 flex flex-col justify-center shadow-2xl">
                   <div className="flex justify-between items-baseline mb-6">
-                    <h3 className="text-xs font-black text-neutral-500 uppercase tracking-widest">Rentabilité Mensuelle Moyen.</h3>
-                    <span className="text-[9px] bg-neutral-900 px-3 py-1 rounded-full font-black text-neutral-400 uppercase tracking-widest">{monthsActive} Mois</span>
+                    <h3 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Rentabilité Mensuelle Moy.</h3>
+                    <span className="text-[8px] bg-neutral-900 px-3 py-1 rounded-full font-black text-neutral-400 uppercase tracking-widest">{monthsActive} Mois</span>
                   </div>
-                  <p className={`text-4xl font-black ${monthlyProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                  <p className={`text-3xl sm:text-4xl font-black ${monthlyProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                     {(monthlyProfit ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })} <span className="text-lg text-neutral-600">{CURRENCY} / Mois</span>
                   </p>
                   <p className="text-[10px] text-neutral-600 mt-6 italic font-medium leading-relaxed">
-                    Calcul basé sur la mise en circulation le <span className="text-neutral-400">{new Date(vehicle.registrationDate).toLocaleDateString()}</span>
+                    Comptabilisé depuis le <span className="text-neutral-400">{new Date(vehicle.registrationDate).toLocaleDateString()}</span>
                   </p>
                 </div>
               </div>
 
               {/* Simulation Card */}
-              <div className="bg-neutral-950 border border-neutral-800 rounded-[2.5rem] p-10 relative overflow-hidden shadow-2xl">
+              <div className="bg-neutral-950 border border-neutral-800 rounded-[2rem] sm:rounded-[2.5rem] p-8 sm:p-10 relative overflow-hidden shadow-2xl">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-900/5 blur-[100px] pointer-events-none"></div>
                 <div className="flex flex-col lg:flex-row items-center gap-10 relative z-10">
                   <div className="flex-1 space-y-6">
                     <div>
-                      <h3 className="text-lg font-black text-white uppercase tracking-tighter mb-2">Simulateur de Sortie</h3>
-                      <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Estimez le profit final après vente</p>
+                      <h3 className="text-sm sm:text-lg font-black text-white uppercase tracking-tighter mb-2">Simulateur de Sortie (Vente)</h3>
+                      <p className="text-[9px] font-bold text-neutral-500 uppercase tracking-widest">Estimation du résultat final après revente</p>
                     </div>
                     <div className="space-y-3">
                       <label className="text-[9px] font-black text-neutral-500 uppercase tracking-widest px-1">Prix de Revente Estimé ({CURRENCY})</label>
                       <input
                         type="number"
-                        className="w-full bg-neutral-900 border border-neutral-800 p-5 rounded-2xl outline-none focus:border-emerald-500 text-3xl font-black text-white shadow-inner"
+                        className="w-full bg-neutral-900 border border-neutral-800 p-4 sm:p-5 rounded-2xl outline-none focus:border-emerald-500 text-2xl sm:text-3xl font-black text-white shadow-inner"
                         placeholder="0"
                         value={simulatedResale}
                         onChange={e => setSimulatedResale(e.target.value)}
@@ -730,12 +686,12 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                   </div>
 
                   <div className="w-full lg:w-96 p-8 bg-neutral-900 rounded-[2rem] border border-neutral-800 shadow-xl text-center">
-                    <p className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.2em] mb-4">Résultat Final Projeté</p>
-                    <p className={`text-4xl font-black ${projectedResult >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                    <p className="text-[9px] font-black text-neutral-500 uppercase tracking-[0.2em] mb-4">Résultat Final Projeté</p>
+                    <p className={`text-3xl sm:text-4xl font-black ${projectedResult >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                       {(projectedResult ?? 0).toLocaleString()} <span className="text-sm text-neutral-600">DA</span>
                     </p>
                     <div className="mt-6 pt-6 border-t border-neutral-800">
-                      <p className="text-[9px] font-black text-neutral-600 uppercase tracking-widest">Calcul : (Revente + Marge) - Achat</p>
+                      <p className="text-[8px] font-black text-neutral-600 uppercase tracking-widest leading-loose">Calcul : (Revente + Marge) - Achat</p>
                     </div>
                   </div>
                 </div>

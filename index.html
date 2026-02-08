@@ -17,6 +17,38 @@
             margin: 0;
             padding: 0;
             overflow: hidden;
+            font-size: 13px; /* Slightly smaller base */
+        }
+
+        /* Shrink all elements globally */
+        * {
+           transition: all 0.2s ease-out;
+        }
+        
+        button, input { font-size: 0.9em !important; }
+        .p-4 { padding: 0.75rem !important; }
+        .p-6 { padding: 1rem !important; }
+        .p-8 { padding: 1.5rem !important; }
+        .gap-4 { gap: 0.75rem !important; }
+        .gap-6 { gap: 1rem !important; }
+
+        /* Hide number spin buttons */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        /* Print Fixes */
+        @media print {
+            .print\:hidden { display: none !important; }
+            #chat-bubble, #messenger-widget { display: none !important; }
+            body { overflow: visible !important; background: white !important; color: black !important; }
+            .bg-neutral-900, .bg-neutral-950 { background: white !important; color: black !important; border: 1px solid #ddd !important; }
+            .text-white, .text-neutral-100 { color: black !important; }
         }
 
         #root:empty::before {
@@ -33,15 +65,8 @@
         }
 
         @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.5;
-            }
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
     </style>
 

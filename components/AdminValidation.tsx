@@ -26,19 +26,37 @@ const AdminValidation: React.FC<AdminValidationProps> = ({ store }) => {
     setEditMileage(req.mileageAtEntry?.toString() || '');
   };
 
+  const [isValidating, setIsValidating] = useState(false);
+
   const saveAndApprove = async (req: FinancialEntry) => {
-    const updated: FinancialEntry = {
-      ...req,
-      amount: Number(editAmount),
-      description: editDescription,
-      mileageAtEntry: Number(editMileage),
-      status: MaintenanceStatus.APPROVED
-    };
-    await store.updateEntry(updated);
-    if (req.type === EntryType.EXPENSE_MAINTENANCE) {
-      await store.approveMaintenance(req.id);
+    if (isValidating) return;
+    setIsValidating(true);
+    try {
+      const updated: FinancialEntry = {
+        ...req,
+        amount: Number(editAmount),
+        description: editDescription,
+        mileageAtEntry: Number(editMileage),
+        status: MaintenanceStatus.APPROVED
+      };
+      await store.updateEntry(updated);
+      if (req.type === EntryType.EXPENSE_MAINTENANCE) {
+        await store.approveMaintenance(req.id);
+      }
+      setEditingId(null);
+    } finally {
+      setIsValidating(false);
     }
-    setEditingId(null);
+  };
+
+  const approveRequest = async (id: string) => {
+    if (isValidating) return;
+    setIsValidating(true);
+    try {
+      await store.approveMaintenance(id);
+    } finally {
+      setIsValidating(false);
+    }
   };
 
   return (
@@ -198,13 +216,15 @@ const AdminValidation: React.FC<AdminValidationProps> = ({ store }) => {
                     ) : (
                       <>
                         <button
-                          onClick={() => store.approveMaintenance(request.id)}
-                          className="flex-1 flex items-center justify-center gap-2 bg-neutral-100 hover:bg-white text-neutral-900 p-3 rounded-xl font-black uppercase tracking-widest text-[9px] shadow-lg transition-all active:scale-95"
+                          onClick={() => approveRequest(request.id)}
+                          disabled={isValidating}
+                          className={`flex-1 flex items-center justify-center gap-2 bg-neutral-100 hover:bg-white text-neutral-900 p-3 rounded-xl font-black uppercase tracking-widest text-[9px] shadow-lg transition-all active:scale-95 ${isValidating ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                          <CheckCircle className="w-4 h-4 text-emerald-600" /> Approuver
+                          <CheckCircle className={`w-4 h-4 text-emerald-600 ${isValidating ? 'animate-pulse' : ''}`} /> {isValidating ? 'Validation...' : 'Approuver'}
                         </button>
                         <button
                           onClick={() => startEditing(request)}
+                          disabled={isValidating}
                           className="flex-1 flex items-center justify-center gap-2 bg-neutral-950 border border-neutral-800 hover:bg-neutral-900 text-neutral-400 hover:text-white p-3 rounded-xl font-black uppercase tracking-widest text-[9px] transition-all"
                         >
                           <Edit2 className="w-4 h-4" /> Modifier & Valider

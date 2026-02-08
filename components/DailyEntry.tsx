@@ -191,12 +191,17 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
                   >
                     <p className="text-[11px] font-black text-white uppercase tracking-widest text-center">Caisse Agence (Global)</p>
                   </div>
-                  {myCaisse && (
+                  {myCaisse && activeForm !== 'REVENUE' && (
                     <div
                       onClick={() => setUsePersonalCaisse(true)}
                       className={`p-4 rounded-2xl border cursor-pointer transition-all ${usePersonalCaisse ? 'bg-red-950/20 border-red-600 shadow-lg' : 'bg-neutral-950 border-neutral-800 opacity-50'}`}
                     >
                       <p className="text-[11px] font-black text-white uppercase tracking-widest text-center">Ma Caisse ({myCaisse.userName})</p>
+                    </div>
+                  )}
+                  {activeForm === 'REVENUE' && (
+                    <div className="p-4 rounded-2xl border border-neutral-800 bg-neutral-900/10 opacity-30 flex items-center justify-center">
+                      <p className="text-[9px] font-black text-neutral-600 uppercase tracking-widest text-center">Encaissement Agence Uniquement</p>
                     </div>
                   )}
                 </div>
@@ -300,7 +305,7 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
                       {/* Dynamic Maintenance Items (+) */}
                       <div className="space-y-4 bg-neutral-950/50 p-6 rounded-[2rem] border border-neutral-800 shadow-inner">
                         <div className="flex justify-between items-center mb-2">
-                          <h4 className="text-[10px] font-black text-neutral-400 uppercase tracking-widest px-1">Détails de l'entretien (Filtres, Pièces...)</h4>
+                          <h4 className="text-[10px] font-black text-neutral-400 uppercase tracking-widest px-1">Détail des Filtres & Pièces rattachées</h4>
                           <button
                             type="button"
                             onClick={() => setMaintenanceItems([...maintenanceItems, { name: '', price: 0 }])}
