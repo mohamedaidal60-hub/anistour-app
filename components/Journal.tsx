@@ -12,6 +12,7 @@ interface JournalProps {
 const Journal: React.FC<JournalProps> = ({ store }) => {
   const isAgent = store.currentUser?.role === UserRole.AGENT;
   const [searchTerm, setSearchTerm] = useState('');
+  const isAdmin = store.currentUser?.role === UserRole.ADMIN;
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<Partial<FinancialEntry>>({});
 
@@ -216,12 +217,22 @@ const Journal: React.FC<JournalProps> = ({ store }) => {
                       <span className="font-black text-neutral-100 uppercase tracking-tighter text-xs group-hover:text-red-500 transition-colors print:text-black">{vehicle?.name || 'Général'}</span>
                       {vehicle && (
                         isEditing ? (
-                          <input
-                            type="number"
-                            className="bg-neutral-950 border border-neutral-700 text-[10px] font-black text-neutral-300 p-1 w-20 rounded mt-1"
-                            value={editValue.mileageAtEntry}
-                            onChange={(e) => setEditValue({ ...editValue, mileageAtEntry: Number(e.target.value) })}
-                          />
+                          <div className="space-y-1 mt-1">
+                            <input
+                              type="number"
+                              className="bg-neutral-950 border border-neutral-700 text-[10px] font-black text-neutral-300 p-1 w-20 rounded"
+                              value={editValue.mileageAtEntry}
+                              onChange={(e) => setEditValue({ ...editValue, mileageAtEntry: Number(e.target.value) })}
+                            />
+                            {isAdmin && (
+                              <input
+                                type="date"
+                                className="bg-neutral-950 border border-neutral-700 text-[9px] font-black text-neutral-300 p-1 w-full rounded"
+                                value={editValue.date?.split('T')[0]}
+                                onChange={(e) => setEditValue({ ...editValue, date: e.target.value })}
+                              />
+                            )}
+                          </div>
                         ) : (
                           <span className="block text-[8px] text-neutral-500 font-black uppercase mt-0.5 tracking-widest print:text-neutral-600">Idx: {(entry.mileageAtEntry ?? 0).toLocaleString()}</span>
                         )

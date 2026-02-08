@@ -14,6 +14,7 @@ const AdminValidation: React.FC<AdminValidationProps> = ({ store }) => {
   const [editAmount, setEditAmount] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editMileage, setEditMileage] = useState('');
+  const [editDate, setEditDate] = useState('');
 
   const pendingRequests = store.entries.filter(e =>
     (e.status === MaintenanceStatus.PENDING || e.status === MaintenanceStatus.REJECTED)
@@ -24,6 +25,7 @@ const AdminValidation: React.FC<AdminValidationProps> = ({ store }) => {
     setEditAmount(req.amount.toString());
     setEditDescription(req.description || req.designation || '');
     setEditMileage(req.mileageAtEntry?.toString() || '');
+    setEditDate(req.date?.split('T')[0] || '');
   };
 
   const [isValidating, setIsValidating] = useState(false);
@@ -37,6 +39,7 @@ const AdminValidation: React.FC<AdminValidationProps> = ({ store }) => {
         amount: Number(editAmount),
         description: editDescription,
         mileageAtEntry: Number(editMileage),
+        date: editDate || req.date,
         status: MaintenanceStatus.APPROVED
       };
       await store.updateEntry(updated);
@@ -169,6 +172,12 @@ const AdminValidation: React.FC<AdminValidationProps> = ({ store }) => {
                               placeholder="Index KM"
                             />
                           )}
+                          <input
+                            type="date"
+                            className="bg-neutral-900 border border-neutral-800 p-1.5 rounded-lg text-[10px] font-black text-neutral-500 w-full text-right outline-none mt-1"
+                            value={editDate}
+                            onChange={e => setEditDate(e.target.value)}
+                          />
                         </div>
                       ) : (
                         <div className="text-right">
