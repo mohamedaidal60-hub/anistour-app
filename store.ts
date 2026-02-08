@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { Vehicle, FinancialEntry, Notification, User, UserRole, MaintenanceStatus, EntryType, GlobalExpense, Message, CashDesk } from './types.ts';
+import { Vehicle, FinancialEntry, Notification, User, UserRole, MaintenanceStatus, EntryType, GlobalExpense, Message, CashDesk, HistoricalStats } from './types.ts';
 
 const SUPABASE_URL = 'https://zxxrazexrwokihbzhina.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Nr7EYzoE9HkOyncjhPTLSw_R6Dm0-1W';
@@ -30,6 +30,7 @@ export function useFleetStore() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [users, setUsers] = useState<User[]>(() => getLocal('users', []));
   const [cashDesks, setCashDesks] = useState<CashDesk[]>(() => getLocal('cash_desks', []));
+  const [historicalStats, setHistoricalStats] = useState<HistoricalStats | null>(() => getLocal('historical_stats', null));
   const [appLogo, setAppLogoState] = useState<string>(() => getLocal('logo', ''));
   const [currentUser, setCurrentUserState] = useState<User | null>(() => getLocal('current_user', null));
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
@@ -81,13 +82,30 @@ export function useFleetStore() {
 
       const { data: uData } = await supabase.from('users').select('*');
       if (uData && uData.length > 0) {
-        setUsers(uData);
-        setLocal('users', uData);
+        // Auto-check for 60-day inactivity
+        const sixtyDaysAgo = new Date();
+        sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
+        const updatedUsers = uData.map(u => {
+          const lastLogin = u.lastLogin ? new Date(u.lastLogin) : new Date(0);
+          const isActive = lastLogin > sixtyDaysAgo;
+          return { ...u, isActive };
+        });
+
+        setUsers(updatedUsers);
+        setLocal('users', updatedUsers);
       } else {
-        const admin = { id: 'admin_1', name: 'Admin Anistour', role: UserRole.ADMIN, email: 'anisbelhadjamara@gmail.com', password: 'Azerty2026' };
+        const admin = { id: 'admin_1', name: 'Admin Anistour', role: UserRole.ADMIN, email: 'anisbelhadjamara@gmail.com', password: 'Azerty2026', isActive: true };
         setUsers([admin]);
         setLocal('users', [admin]);
       }
+
+      const { data: hData } = await supabase.from('historical_stats').select('*').single();
+      if (hData) {
+        setHistoricalStats(hData);
+        setLocal('historical_stats', hData);
+      }
+
       setIsDataLoaded(true);
     } catch (error) {
       console.error("Cloud Sync Error:", error);
@@ -295,7 +313,14 @@ export function useFleetStore() {
     // Perte Vente = Prix Achat - Prix Vente
     // Bénéfice Net Global = Bénéfice - Perte Vente
     const lossOnPastSales = purchaseTotalOfSold - salesTotal;
-    const netProfit = revenue - totalExpenses - lossOnPastSales;
+
+    // Include Historical Stats in totals
+    const carryRevenue = historicalStats?.accumulatedRevenue || 0;
+    const carryExpenses = historicalStats?.accumulatedExpenses || 0;
+
+    const finalRevenue = revenue + carryRevenue;
+    const finalTotalExpenses = totalExpenses + carryExpenses;
+    const netProfit = finalRevenue - finalTotalExpenses - lossOnPastSales;
 
     const activeVehicles = vehicles.filter(v => !v.isArchived);
     // Mature vehicles = vehicles past their purchase month for average calculations
@@ -330,8 +355,13 @@ export function useFleetStore() {
     const cashOnHand = cashDesks.reduce((sum, d) => sum + (d.balance || 0), 0);
 
     return {
-      revenue, expenses: vehicleExpenses, globalExpenses: globalTotal, totalExpenses,
-      netProfit, monthlyProfit: netProfit / finalMonths, activeCount: activeVehicles.length,
+      revenue: finalRevenue,
+      expenses: vehicleExpenses,
+      globalExpenses: globalTotal,
+      totalExpenses: finalTotalExpenses,
+      netProfit,
+      monthlyProfit: netProfit / finalMonths,
+      activeCount: activeVehicles.length,
       costPerVehicle, finalMonths,
       todayRevenue, todayExpenses, todayProfit, cashOnHand
     };
@@ -434,28 +464,37 @@ export function useFleetStore() {
       URL.revokeObjectURL(url);
     },
     purgeDatabase: async () => {
-      if (!confirm("ATTENTION : Cette action va effacer définitivement toutes les opérations, dépenses et notifications de la base de données CLOUD. Assurez-vous d'avoir téléchargé une sauvegarde locale avant. Continuer ?")) {
+      if (!confirm("ATTENTION : Cette action va archiver les montants actuels et purger les opérations CLOUD. Les véhicules et utilisateurs actifs resteront. Vérifiez votre Backup avant. Continuer ?")) {
         return;
       }
 
       setIsCloudSyncing(true);
       try {
-        // Delete entries, global_expenses, notifications, messages
+        const stats = getFinancialStats();
+
+        // 1. Update Historical Stats (Carry Forward)
+        const newHistorical: Partial<HistoricalStats> = {
+          accumulatedRevenue: (historicalStats?.accumulatedRevenue || 0) + (stats.revenue - (historicalStats?.accumulatedRevenue || 0)),
+          accumulatedExpenses: (historicalStats?.accumulatedExpenses || 0) + (stats.totalExpenses - (historicalStats?.accumulatedExpenses || 0)),
+          accumulatedProfit: stats.netProfit,
+          lastPurgeDate: new Date().toISOString()
+        };
+
+        // We use upsert for historical stats (assuming ID 'global')
+        await supabase.from('historical_stats').upsert([{ id: 'global', ...newHistorical }]);
+
+        // 2. Delete entries, global_expenses, notifications, messages (Keeping Vehicles and Users)
         await supabase.from('entries').delete().neq('id', '0');
         await supabase.from('global_expenses').delete().neq('id', '0');
         await supabase.from('notifications').delete().neq('id', '0');
         await supabase.from('messages').delete().neq('id', '0');
-
-        // Optionally reset cash desks balance to 0 ? 
-        // The user said "vider la database", usually means transactions.
-        // We keep vehicles and users.
 
         setEntries([]);
         setGlobalExpenses([]);
         setNotifications([]);
         setMessages([]);
 
-        alert("Base de données purgée avec succès.");
+        alert("Base de données purgée. Les totaux ont été reportés dans l'historique.");
         fetchData();
       } catch (e) {
         console.error(e);

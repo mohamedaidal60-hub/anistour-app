@@ -11,6 +11,15 @@ export interface User {
   email: string;
   password?: string;
   lastLogin?: string;
+  isActive?: boolean;
+}
+
+export interface HistoricalStats {
+  id: string;
+  accumulatedRevenue: number;
+  accumulatedExpenses: number;
+  accumulatedProfit: number;
+  lastPurgeDate: string;
 }
 
 export enum MaintenanceStatus {
