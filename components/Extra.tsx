@@ -3,11 +3,11 @@ import React, { useState, useRef, useMemo } from 'react';
 import { useFleetStore } from '../store.ts';
 import { Vehicle, VehicleDocument, EntryType, FinancialEntry, MaintenanceStatus } from '../types.ts';
 import {
-    PieChart, BarChart, LineChart, FileText, Filter, AlertTriangle,
+    PieChart as PieIcon, BarChart as BarIcon, LineChart as LineIcon, FileText, Filter, AlertTriangle,
     Calendar, CheckCircle, Clock, TrendingUp, TrendingDown, DollarSign,
     X, Camera, Upload, Save, Settings, Database, Trash2
 } from 'lucide-react';
-import { ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Line } from 'recharts';
+import { ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Line, LineChart, BarChart, PieChart } from 'recharts';
 import { CURRENCY } from '../constants.ts';
 
 interface ExtraProps {
@@ -126,7 +126,7 @@ const Extra: React.FC<ExtraProps> = ({ store }) => {
                     onClick={() => setActiveTab('BI')}
                     className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 justify-center ${activeTab === 'BI' ? 'bg-red-700 text-white shadow-lg shadow-red-900/20' : 'text-neutral-500 hover:text-white'}`}
                 >
-                    <PieChart className="w-4 h-4" /> Analyse & Décisionnel
+                    <PieIcon className="w-4 h-4" /> Analyse & Décisionnel
                 </button>
                 <button
                     onClick={() => setActiveTab('GED')}

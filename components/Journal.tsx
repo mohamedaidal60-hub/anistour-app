@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useFleetStore } from '../store.ts';
 import { EntryType, MaintenanceStatus, UserRole, FinancialEntry } from '../types.ts';
-import { ArrowUpRight, ArrowDownLeft, Wrench, Search, ShieldAlert, User as UserIcon, Coins, Edit3, Check, X, PrinterIcon, Calendar, Filter } from 'lucide-react';
+import { ArrowUpRight, ArrowDownLeft, Wrench, Search, ShieldAlert, User as UserIcon, Coins, Edit3, Check, X, Printer, Calendar, Filter } from 'lucide-react';
 import { CURRENCY } from '../constants.ts';
 
 interface JournalProps {
@@ -102,7 +102,7 @@ const Journal: React.FC<JournalProps> = ({ store }) => {
             className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl transition-all shadow-md active:scale-95 border border-neutral-700 w-12 flex justify-center"
             title="Imprimer"
           >
-            <PrinterIcon className="w-4 h-4" />
+            <Printer className="w-4 h-4" />
           </button>
 
           <div className="relative flex-1 md:w-64">
