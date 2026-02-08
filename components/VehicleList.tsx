@@ -5,7 +5,8 @@ import { MAINTENANCE_TYPES, CURRENCY } from '../constants.ts';
 import {
   Plus, Search, Archive, Calendar, Ruler, Car, Camera, Wrench,
   FileText, X, Save, Filter, Trash2, Edit2, Calculator,
-  AlertCircle, ChevronRight, CheckSquare, Square, User
+  AlertCircle, ChevronRight, CheckSquare, Square, User,
+  Printer, TrendingUp, History
 } from 'lucide-react';
 
 interface VehicleListProps {
@@ -435,6 +436,12 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
   const [editingConfig, setEditingConfig] = useState(false);
   const [tempConfigs, setTempConfigs] = useState<MaintenanceConfig[]>(vehicle.maintenanceConfigs || []);
 
+  const saveSimulation = async () => {
+    if (!simulatedResale) return;
+    await store.updateVehicle({ ...vehicle, simulatedSalePrice: Number(simulatedResale) });
+    alert("Simulation de revente enregistrée.");
+  };
+
   const isAdmin = store.currentUser?.role === UserRole.ADMIN;
 
   const entries = store.entries.filter((e: FinancialEntry) => e.vehicleId === vehicle.id);
@@ -469,18 +476,18 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 bg-black/90 backdrop-blur-md overflow-hidden">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-[2.5rem] w-full max-w-5xl h-[95vh] sm:h-[90vh] flex flex-col relative overflow-hidden shadow-2xl">
+      <div className="bg-neutral-900 border border-neutral-800 rounded-[2.5rem] w-full max-w-3xl h-[95vh] sm:h-[90vh] flex flex-col relative overflow-hidden shadow-2xl">
         {/* Premium Header */}
-        <div className="relative shrink-0 border-b border-neutral-800 bg-neutral-950 px-8 py-10 overflow-hidden">
+        <div className="relative shrink-0 border-b border-neutral-800 bg-neutral-950 px-6 py-6 overflow-hidden">
           <div className="absolute top-0 right-0 w-80 h-80 bg-red-900/10 blur-[100px] pointer-events-none"></div>
-          <div className="relative flex items-center gap-8">
-            <div className="w-28 h-28 rounded-3xl overflow-hidden bg-neutral-900 border border-neutral-800 shadow-2xl shrink-0 group">
+          <div className="relative flex items-center gap-6">
+            <div className="w-20 h-20 rounded-2xl overflow-hidden bg-neutral-900 border border-neutral-800 shadow-2xl shrink-0 group">
               <img src={vehicle.photo || '/car-placeholder.jpg'} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-4 mb-2">
-                <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter text-white truncate">{vehicle.name}</h2>
-                <div className="px-3 py-1 bg-red-900/20 border border-red-700/30 rounded-lg text-[10px] font-black text-red-500 uppercase tracking-widest">Actif</div>
+              <div className="flex items-center gap-4 mb-1">
+                <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter text-white truncate">{vehicle.name}</h2>
+                <div className="px-2 py-0.5 bg-red-900/20 border border-red-700/30 rounded-lg text-[9px] font-black text-red-500 uppercase tracking-widest">Actif</div>
               </div>
               <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
                 <div className="flex items-center gap-2 text-neutral-500">
@@ -493,9 +500,18 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                 </div>
               </div>
             </div>
-            <button onClick={onClose} className="p-4 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-2xl transition-all shadow-xl border border-neutral-800 active:scale-95">
-              <X className="w-6 h-6" />
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => window.print()}
+                className="p-3 bg-neutral-900 hover:bg-neutral-100 hover:text-neutral-900 text-neutral-400 rounded-xl transition-all border border-neutral-800 shadow-lg group"
+                title="Imprimer Fiche"
+              >
+                <Printer className="w-5 h-5 group-active:scale-95" />
+              </button>
+              <button onClick={onClose} className="p-3 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-xl transition-all shadow-xl border border-neutral-800 active:scale-95">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -675,13 +691,21 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                     </div>
                     <div className="space-y-3">
                       <label className="text-[9px] font-black text-neutral-500 uppercase tracking-widest px-1">Prix de Revente Estimé ({CURRENCY})</label>
-                      <input
-                        type="number"
-                        className="w-full bg-neutral-900 border border-neutral-800 p-4 sm:p-5 rounded-2xl outline-none focus:border-emerald-500 text-2xl sm:text-3xl font-black text-white shadow-inner"
-                        placeholder="0"
-                        value={simulatedResale}
-                        onChange={e => setSimulatedResale(e.target.value)}
-                      />
+                      <div className="flex gap-4">
+                        <input
+                          type="number"
+                          className="flex-1 bg-neutral-900 border border-neutral-800 p-4 rounded-xl outline-none focus:border-emerald-500 text-2xl font-black text-white shadow-inner"
+                          placeholder={vehicle.simulatedSalePrice?.toString() || "0"}
+                          value={simulatedResale}
+                          onChange={e => setSimulatedResale(e.target.value)}
+                        />
+                        <button
+                          onClick={saveSimulation}
+                          className="px-6 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all active:scale-95"
+                        >
+                          Enregistrer
+                        </button>
+                      </div>
                     </div>
                   </div>
 

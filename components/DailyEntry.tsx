@@ -22,6 +22,7 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
   const [expenseType, setExpenseType] = useState<EntryType>(EntryType.EXPENSE_SIMPLE);
   const [maintenanceType, setMaintenanceType] = useState(MAINTENANCE_TYPES[0] || 'Vidange');
   const [mileage, setMileage] = useState('');
+  const [entryDate, setEntryDate] = useState(new Date().toISOString().split('T')[0]);
   const [proofPhoto, setProofPhoto] = useState<string | null>(null);
   const [usePersonalCaisse, setUsePersonalCaisse] = useState(false);
   const [signature, setSignature] = useState<string | null>(null);
@@ -87,13 +88,13 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
         id: Date.now().toString(),
         vehicleId: vehicleId || undefined,
         cashDeskId: cashDeskId,
-        date: new Date().toISOString(),
+        date: entryDate,
         amount: Number(amount),
         type: activeForm === 'REVENUE' ? EntryType.REVENUE : expenseType,
         description: finalDescription,
         agentName: store.currentUser?.name || 'Agent Anistour',
         mileageAtEntry: mileage ? Number(mileage) : undefined,
-        status: activeForm === 'EXPENSE_VEHICLE' && expenseType === EntryType.EXPENSE_MAINTENANCE ? MaintenanceStatus.PENDING : MaintenanceStatus.APPROVED,
+        status: store.currentUser?.role === UserRole.ADMIN ? MaintenanceStatus.APPROVED : MaintenanceStatus.PENDING,
         maintenanceType: expenseType === EntryType.EXPENSE_MAINTENANCE ? maintenanceType : undefined,
         proofPhoto: proofPhoto || undefined,
         signature: signature || undefined,
@@ -155,13 +156,15 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
             >
               Véhicule
             </button>
-            <button
-              onClick={() => { setActiveForm('EXPENSE_GLOBAL'); resetForm(); }}
-              type="button"
-              className={`py-5 px-2 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all border ${activeForm === 'EXPENSE_GLOBAL' ? 'bg-red-900/40 border-red-800 text-neutral-400 text-white shadow-xl translate-y-[-2px]' : 'bg-neutral-950 border-neutral-800 text-neutral-500 hover:border-neutral-700 hover:text-neutral-300'}`}
-            >
-              Charge Agence
-            </button>
+            {store.currentUser?.role === UserRole.ADMIN && (
+              <button
+                onClick={() => { setActiveForm('EXPENSE_GLOBAL'); resetForm(); }}
+                type="button"
+                className={`py-5 px-2 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all border ${activeForm === 'EXPENSE_GLOBAL' ? 'bg-red-900/40 border-red-800 text-neutral-400 text-white shadow-xl translate-y-[-2px]' : 'bg-neutral-950 border-neutral-800 text-neutral-500 hover:border-neutral-700 hover:text-neutral-300'}`}
+              >
+                Charge Agence
+              </button>
+            )}
           </div>
         </div>
 
@@ -228,7 +231,22 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
                   )}
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Montant ({CURRENCY})</label>
+                    <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Date de l'opération</label>
+                    <input
+                      type="date"
+                      required
+                      max={new Date().toISOString().split('T')[0]}
+                      className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl focus:border-red-600 outline-none text-sm font-bold text-white shadow-xl"
+                      value={entryDate}
+                      onChange={(e) => setEntryDate(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2 relative">
+                    <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1 flex justify-between">
+                      <span>Montant ({CURRENCY})</span>
+                      {maintenanceItems.length > 0 && <span className="text-emerald-500 animate-pulse">Calculé par simulation</span>}
+                    </label>
                     <input
                       required
                       type="number"
@@ -282,11 +300,18 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
                         <div className="space-y-2">
                           <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Nature Entretien</label>
                           <select
-                            className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl focus:border-red-600 outline-none text-sm font-bold text-white"
+                            className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl focus:border-red-600 outline-none text-sm font-bold text-white transition-all shadow-lg"
                             value={maintenanceType}
                             onChange={(e) => setMaintenanceType(e.target.value)}
                           >
-                            {MAINTENANCE_TYPES.map(m => <option key={m} value={m}>{m}</option>)}
+                            <optgroup label="Plan du véhicule" className="bg-neutral-900">
+                              {store.vehicles.find(v => v.id === vehicleId)?.maintenanceConfigs?.map(cfg => (
+                                <option key={cfg.type} value={cfg.type}>{cfg.type}</option>
+                              )) || <option disabled>Aucun plan configuré</option>}
+                            </optgroup>
+                            <optgroup label="Standards" className="bg-neutral-950">
+                              {MAINTENANCE_TYPES.map(m => <option key={m} value={m}>{m}</option>)}
+                            </optgroup>
                           </select>
                         </div>
                         <div className="space-y-2">
@@ -317,16 +342,38 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
 
                         {maintenanceItems.map((item, idx) => (
                           <div key={idx} className="flex gap-2 items-center animate-in slide-in-from-left-2 duration-300">
-                            <input
-                              className="flex-1 bg-neutral-900 border border-neutral-800 p-3 rounded-xl text-xs font-bold text-white uppercase outline-none focus:border-red-600/50"
-                              placeholder="Désignation (ex: Filtre à Huile)"
-                              value={item.name}
-                              onChange={(e) => {
-                                const newItems = [...maintenanceItems];
-                                newItems[idx].name = e.target.value;
-                                setMaintenanceItems(newItems);
-                              }}
-                            />
+                            <div className="flex-1 relative">
+                              <input
+                                list="common-parts"
+                                className="w-full bg-neutral-900 border border-neutral-800 p-3 rounded-xl text-xs font-bold text-white uppercase outline-none focus:border-red-600/50"
+                                placeholder="Désignation (ex: Filtre à Huile)"
+                                value={item.name}
+                                onChange={(e) => {
+                                  const newItems = [...maintenanceItems];
+                                  newItems[idx].name = e.target.value;
+                                  setMaintenanceItems(newItems);
+                                }}
+                              />
+                              <datalist id="common-parts">
+                                <option value="Filtre à Huile" />
+                                <option value="Filtre à Air" />
+                                <option value="Filtre à Carburant (Gazoil)" />
+                                <option value="Filtre Habitacle" />
+                                <option value="Huile 5W30 (5L)" />
+                                <option value="Huile 10W40 (5L)" />
+                                <option value="Huile 5W40 (5L)" />
+                                <option value="Liquide de Refroidissement" />
+                                <option value="Liquide de Frein" />
+                                <option value="Plaquettes de Frein" />
+                                <option value="Disques de Frein" />
+                                <option value="Kit Distribution" />
+                                <option value="Courroie Alternateur" />
+                                <option value="Batterie" />
+                                <option value="Appoint Huile" />
+                                <option value="Main d'oeuvre" />
+                                <option value="Autre / Divers" />
+                              </datalist>
+                            </div>
                             <div className="relative w-28">
                               <input
                                 type="number"

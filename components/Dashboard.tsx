@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { useFleetStore } from '../store.ts';
 import { EntryType, MaintenanceStatus } from '../types.ts';
-import { TrendingUp, TrendingDown, DollarSign, Activity, Clock, ArrowUpRight, ArrowDownLeft, Sparkles, Loader2, Calendar } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Activity, Clock, ArrowUpRight, ArrowDownLeft, Sparkles, Loader2, Calendar, Printer } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CURRENCY } from '../constants.ts';
 
@@ -29,6 +29,25 @@ const Dashboard: React.FC<DashboardProps> = ({ store }) => {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-between items-center bg-neutral-900 border border-neutral-800 p-4 rounded-3xl mb-6 print:hidden">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-red-700 rounded-2xl shadow-lg shadow-red-900/20">
+            <Activity className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-black uppercase tracking-tighter text-white">Performance Overview</h2>
+            <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mt-0.5">Temps réel & Indicateurs clés</p>
+          </div>
+        </div>
+        <button
+          onClick={() => window.print()}
+          className="p-4 bg-neutral-950 hover:bg-white hover:text-black rounded-2xl border border-neutral-800 transition-all flex items-center justify-center text-neutral-400 shadow-xl"
+          title="Imprimer Tableau de Bord"
+        >
+          <Printer className="w-5 h-5" />
+        </button>
+      </div>
+
       {/* Idea 1: Live Profit Dashboard (Admin Only) */}
       {isAdmin && (
         <div className="bg-neutral-900 border border-neutral-800 p-1 rounded-2xl flex flex-col md:flex-row gap-1 shadow-2xl backdrop-blur-xl">

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useFleetStore } from '../store.ts';
-import { Plus, Wallet, TrendingDown, Users, Camera, Upload, X, Save } from 'lucide-react';
+import { Plus, Wallet, TrendingDown, Users, Camera, Upload, X, Save, Printer } from 'lucide-react';
 import { GlobalExpense } from '../types.ts';
 
 const GlobalExpenses: React.FC<{ store: any }> = ({ store }) => {
@@ -103,12 +103,21 @@ const GlobalExpenses: React.FC<{ store: any }> = ({ store }) => {
             {/* Action Bar */}
             <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold">Historique des Charges</h2>
-                <button
-                    onClick={() => setShowForm(true)}
-                    className="flex items-center gap-2 bg-red-700 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all"
-                >
-                    <Plus className="w-4 h-4" /> Nouvelle Charge
-                </button>
+                <div className="flex gap-3 print:hidden">
+                    <button
+                        onClick={() => window.print()}
+                        className="flex items-center justify-center p-2 bg-neutral-900 hover:bg-white hover:text-black text-neutral-400 rounded-xl border border-neutral-800 transition-all shadow-lg"
+                        title="Imprimer"
+                    >
+                        <Printer className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={() => setShowForm(true)}
+                        className="flex items-center gap-2 bg-red-700 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all"
+                    >
+                        <Plus className="w-4 h-4" /> Nouvelle Charge
+                    </button>
+                </div>
             </div>
 
             {/* Form Modal */}

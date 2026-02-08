@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useFleetStore } from '../store.ts';
 import { EntryType, MaintenanceStatus, FinancialEntry } from '../types.ts';
-import { CheckCircle, XCircle, Clock, ShieldCheck, Edit2, Save } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, ShieldCheck, Edit2, Save, Printer } from 'lucide-react';
 import { CURRENCY } from '../constants.ts';
 
 interface AdminValidationProps {
@@ -72,8 +72,17 @@ const AdminValidation: React.FC<AdminValidationProps> = ({ store }) => {
             <p className="text-[9px] text-neutral-500 font-bold uppercase tracking-[0.2em] mt-0.5">Contrôle des flux</p>
           </div>
         </div>
-        <div className="px-4 py-2 bg-red-950/20 border border-red-900/30 rounded-xl">
-          <span className="text-[9px] font-black text-red-500 uppercase tracking-widest">{pendingRequests.length} Dossiers En attente</span>
+        <div className="flex items-center gap-3 relative z-10 print:hidden">
+          <button
+            onClick={() => window.print()}
+            className="p-3 bg-neutral-950 hover:bg-white hover:text-black rounded-xl border border-neutral-800 transition-all shadow-xl text-neutral-400"
+            title="Imprimer"
+          >
+            <Printer className="w-5 h-5" />
+          </button>
+          <div className="px-4 py-2 bg-red-950/20 border border-red-900/30 rounded-xl">
+            <span className="text-[9px] font-black text-red-500 uppercase tracking-widest">{pendingRequests.length} Dossiers En attente</span>
+          </div>
         </div>
       </div>
 
