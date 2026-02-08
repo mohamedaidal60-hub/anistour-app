@@ -98,8 +98,11 @@ const Extra: React.FC<ExtraProps> = ({ store }) => {
 
         const regDate = new Date(v.registrationDate);
         const now = new Date();
+        const accountableDate = new Date(regDate.getFullYear(), regDate.getMonth() + 2, 0);
         const diffMonths = (now.getFullYear() - regDate.getFullYear()) * 12 + (now.getMonth() - regDate.getMonth());
-        const monthsForDiv = Math.max(0, diffMonths);
+
+        // If not mature yet, we don't count months for return calculation to avoid inflation
+        const monthsForDiv = now > accountableDate ? diffMonths : 0;
 
         const km = v.lastMileage || 1;
         const costPerKm = expenses / km;

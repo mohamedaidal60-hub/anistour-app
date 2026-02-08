@@ -339,11 +339,12 @@ export function useFleetStore() {
     const netProfit = operatingProfit - lossOnPastSales;
 
     const activeVehicles = vehicles.filter(v => !v.isArchived);
-    // Mature vehicles = vehicles past their purchase month for average calculations
+    // Mature vehicles = vehicles past the end of the next month following registration
     const matureVehicles = activeVehicles.filter(v => {
-      const reg = new Date(v.registrationDate);
+      const d = new Date(v.registrationDate);
       const now = new Date();
-      return (now.getFullYear() - reg.getFullYear()) * 12 + (now.getMonth() - reg.getMonth()) > 0;
+      const accountableDate = new Date(d.getFullYear(), d.getMonth() + 2, 0);
+      return now > accountableDate;
     });
     const costPerVehicle = matureVehicles.length > 0 ? (globalTotal / matureVehicles.length) : (activeVehicles.length > 0 ? (globalTotal / activeVehicles.length) : 0);
 

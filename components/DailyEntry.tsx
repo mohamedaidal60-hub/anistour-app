@@ -325,85 +325,79 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
                         </div>
                       </div>
 
-                      {/* Dynamic Maintenance Items (+) */}
-                      <div className="space-y-4 bg-neutral-950/50 p-6 rounded-[2rem] border border-neutral-800 shadow-inner">
-                        <div className="flex justify-between items-center mb-2">
-                          <h4 className="text-[10px] font-black text-neutral-400 uppercase tracking-widest px-1">Détail des Filtres & Pièces rattachées</h4>
-                          <button
-                            type="button"
-                            onClick={() => setMaintenanceItems([...maintenanceItems, { name: '', price: 0 }])}
-                            className="p-2 bg-red-700 hover:bg-red-600 text-white rounded-xl shadow-lg transition-all"
-                          >
-                            <Plus className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        {maintenanceItems.map((item, idx) => (
-                          <div key={idx} className="flex gap-2 items-center animate-in slide-in-from-left-2 duration-300">
-                            <div className="flex-1 relative">
-                              <input
-                                list="common-parts"
-                                className="w-full bg-neutral-900 border border-neutral-800 p-3 rounded-xl text-xs font-bold text-white uppercase outline-none focus:border-red-600/50"
-                                placeholder="Désignation (ex: Filtre à Huile)"
-                                value={item.name}
-                                onChange={(e) => {
-                                  const newItems = [...maintenanceItems];
-                                  newItems[idx].name = e.target.value;
-                                  setMaintenanceItems(newItems);
-                                }}
-                              />
-                              <datalist id="common-parts">
-                                <option value="Filtre à Huile" />
-                                <option value="Filtre à Air" />
-                                <option value="Filtre à Carburant (Gazoil)" />
-                                <option value="Filtre Habitacle" />
-                                <option value="Huile 5W30 (5L)" />
-                                <option value="Huile 10W40 (5L)" />
-                                <option value="Huile 5W40 (5L)" />
-                                <option value="Liquide de Refroidissement" />
-                                <option value="Liquide de Frein" />
-                                <option value="Plaquettes de Frein" />
-                                <option value="Disques de Frein" />
-                                <option value="Kit Distribution" />
-                                <option value="Courroie Alternateur" />
-                                <option value="Batterie" />
-                                <option value="Appoint Huile" />
-                                <option value="Main d'oeuvre" />
-                                <option value="Autre / Divers" />
-                              </datalist>
-                            </div>
-                            <div className="relative w-28">
-                              <input
-                                type="number"
-                                className="w-full bg-neutral-900 border border-neutral-800 p-3 rounded-xl text-xs font-black text-red-500 outline-none focus:border-red-600/50 pr-8"
-                                placeholder="Prix"
-                                value={item.price || ''}
-                                onChange={(e) => {
-                                  const newItems = [...maintenanceItems];
-                                  newItems[idx].price = Number(e.target.value);
-                                  setMaintenanceItems(newItems);
-                                  // Auto-calculate total amount
-                                  const total = newItems.reduce((sum, it) => sum + (it.price || 0), 0);
-                                  if (total > 0) setAmount(total.toString());
-                                }}
-                              />
-                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-neutral-600">DA</span>
-                            </div>
+                      {/* Dynamic Maintenance Items (+) - ONLY FOR VIDANGE */}
+                      {maintenanceType.toLowerCase().includes('vidange') && (
+                        <div className="space-y-4 bg-neutral-950/50 p-6 rounded-[2rem] border border-neutral-800 shadow-inner">
+                          <div className="flex justify-between items-center mb-2">
+                            <h4 className="text-[10px] font-black text-neutral-400 uppercase tracking-widest px-1">Détail des Filtres & Huiles (Vidange)</h4>
                             <button
                               type="button"
-                              onClick={() => {
-                                const newItems = maintenanceItems.filter((_, i) => i !== idx);
-                                setMaintenanceItems(newItems);
-                                const total = newItems.reduce((sum, it) => sum + (it.price || 0), 0);
-                                setAmount(total > 0 ? total.toString() : '');
-                              }}
-                              className="p-3 text-neutral-600 hover:text-red-500 transition-colors"
+                              onClick={() => setMaintenanceItems([...maintenanceItems, { name: '', price: 0 }])}
+                              className="p-2 bg-red-700 hover:bg-red-600 text-white rounded-xl shadow-lg transition-all"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Plus className="w-4 h-4" />
                             </button>
                           </div>
-                        ))}
-                      </div>
+
+                          {maintenanceItems.map((item, idx) => (
+                            <div key={idx} className="flex gap-2 items-center animate-in slide-in-from-left-2 duration-300">
+                              <div className="flex-1 relative">
+                                <input
+                                  list="common-parts"
+                                  className="w-full bg-neutral-900 border border-neutral-800 p-3 rounded-xl text-xs font-bold text-white uppercase outline-none focus:border-red-600/50"
+                                  placeholder="Désignation (ex: Filtre à Huile)"
+                                  value={item.name}
+                                  onChange={(e) => {
+                                    const newItems = [...maintenanceItems];
+                                    newItems[idx].name = e.target.value;
+                                    setMaintenanceItems(newItems);
+                                  }}
+                                />
+                                <datalist id="common-parts">
+                                  <option value="Filtre à Huile" />
+                                  <option value="Filtre à Air" />
+                                  <option value="Filtre à Carburant" />
+                                  <option value="Filtre Habitacle" />
+                                  <option value="Huile 5W30" />
+                                  <option value="Huile 10W40" />
+                                  <option value="Huile 5W40" />
+                                  <option value="Appoint Huile" />
+                                  <option value="Main d'oeuvre" />
+                                </datalist>
+                              </div>
+                              <div className="relative w-28">
+                                <input
+                                  type="number"
+                                  className="w-full bg-neutral-900 border border-neutral-800 p-3 rounded-xl text-xs font-black text-red-500 outline-none focus:border-red-600/50 pr-8"
+                                  placeholder="Prix"
+                                  value={item.price || ''}
+                                  onChange={(e) => {
+                                    const newItems = [...maintenanceItems];
+                                    newItems[idx].price = Number(e.target.value);
+                                    setMaintenanceItems(newItems);
+                                    // Auto-calculate total amount
+                                    const total = newItems.reduce((sum, it) => sum + (it.price || 0), 0);
+                                    if (total > 0) setAmount(total.toString());
+                                  }}
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-neutral-600">DA</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newItems = maintenanceItems.filter((_, i) => i !== idx);
+                                  setMaintenanceItems(newItems);
+                                  const total = newItems.reduce((sum, it) => sum + (it.price || 0), 0);
+                                  setAmount(total > 0 ? total.toString() : '');
+                                }}
+                                className="p-3 text-neutral-600 hover:text-red-500 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 
