@@ -361,7 +361,7 @@ export function useFleetStore() {
     const matureVehicles = activeVehicles.filter(v => {
       const d = new Date(v.registrationDate);
       const now = new Date();
-      const accountableDate = new Date(d.getFullYear(), d.getMonth() + 2, 0);
+      const accountableDate = new Date(d.getFullYear(), d.getMonth() + 1, 0);
       return now > accountableDate;
     });
     const costPerVehicle = matureVehicles.length > 0 ? (globalTotal / matureVehicles.length) : (activeVehicles.length > 0 ? (globalTotal / activeVehicles.length) : 0);
@@ -397,6 +397,7 @@ export function useFleetStore() {
       netProfit,
       monthlyProfit: netProfit / finalMonths,
       activeCount: activeVehicles.length,
+      matureCount: matureVehicles.length,
       costPerVehicle, finalMonths,
       todayRevenue, todayExpenses, todayProfit, cashOnHand
     };

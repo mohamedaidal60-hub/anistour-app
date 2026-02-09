@@ -220,6 +220,20 @@ const Extra: React.FC<ExtraProps> = ({ store }) => {
                                                 store.vehicles.filter(v => v.isArchived).reduce((sum, v) => sum + (v.salePrice || 0), 0)).toLocaleString()} {CURRENCY}
                                         </span>
                                     </div>
+                                    <div className="pt-4 border-t border-neutral-800 space-y-4">
+                                        <div className="flex justify-between items-center text-xs font-black uppercase tracking-widest text-neutral-400">
+                                            <span>Unités Actives (Comptabilisées)</span>
+                                            <span>{store.getFinancialStats().matureCount} / {store.getFinancialStats().activeCount}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-sm font-black text-white uppercase tracking-widest">Part par Véhicule (÷)</span>
+                                            <span className="text-xl font-black text-white">
+                                                {store.getFinancialStats().matureCount > 0
+                                                    ? (store.getFinancialStats().netProfit / store.getFinancialStats().matureCount).toLocaleString(undefined, { maximumFractionDigits: 0 })
+                                                    : 0} {CURRENCY}
+                                            </span>
+                                        </div>
+                                    </div>
                                     <div className="pt-4 flex justify-between items-center">
                                         <span className="text-sm font-black text-white uppercase tracking-widest">Bénéfice Répartissable (=)</span>
                                         <span className="text-2xl font-black text-red-600 underline underline-offset-8 decoration-2">{store.getFinancialStats().netProfit.toLocaleString()} {CURRENCY}</span>

@@ -684,24 +684,60 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                         <div className="grid grid-cols-2 gap-4 mb-6">
                           <div>
                             <p className="text-[8px] text-neutral-600 uppercase font-black text-[7px]">Intervalle</p>
-                            <p className="text-[11px] font-black text-neutral-200">{(cfg.intervalKm ?? 0).toLocaleString()} KM</p>
+                            {editingConfig ? (
+                              <input
+                                type="number"
+                                className="w-full bg-neutral-900 border border-neutral-800 p-1.5 rounded text-[11px] font-black text-white outline-none focus:border-red-600"
+                                value={cfg.intervalKm}
+                                onChange={(e) => {
+                                  const newConfigs = [...tempConfigs];
+                                  newConfigs[idx].intervalKm = Number(e.target.value);
+                                  setTempConfigs(newConfigs);
+                                }}
+                              />
+                            ) : (
+                              <p className="text-[11px] font-black text-neutral-200">{(cfg.intervalKm ?? 0).toLocaleString()} KM</p>
+                            )}
                           </div>
                           <div>
                             <p className="text-[8px] text-neutral-600 uppercase font-black text-[7px]">Prochain</p>
-                            <p className={`text-[11px] font-black ${isUrgent ? 'text-red-500' : 'text-neutral-200'}`}>{(cfg.nextDueKm ?? 0).toLocaleString()} KM</p>
+                            {editingConfig ? (
+                              <input
+                                type="number"
+                                className="w-full bg-neutral-900 border border-neutral-800 p-1.5 rounded text-[11px] font-black text-white outline-none focus:border-red-600"
+                                value={cfg.nextDueKm}
+                                onChange={(e) => {
+                                  const newConfigs = [...tempConfigs];
+                                  newConfigs[idx].nextDueKm = Number(e.target.value);
+                                  setTempConfigs(newConfigs);
+                                }}
+                              />
+                            ) : (
+                              <p className={`text-[11px] font-black ${isUrgent ? 'text-red-500' : 'text-neutral-200'}`}>{(cfg.nextDueKm ?? 0).toLocaleString()} KM</p>
+                            )}
                           </div>
                         </div>
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-baseline">
-                            <span className={`text-[8px] font-black uppercase ${remaining < 0 ? 'text-red-500' : 'text-neutral-500'}`}>
-                              {remaining < 0 ? 'Dépassement' : 'Reste'}
-                            </span>
-                            <span className={`text-[10px] font-black ${remaining < 0 ? 'text-red-500' : 'text-neutral-200'}`}>{(Math.abs(remaining) ?? 0).toLocaleString()} KM</span>
+                        {!editingConfig && (
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-baseline">
+                              <span className={`text-[8px] font-black uppercase ${remaining < 0 ? 'text-red-500' : 'text-neutral-500'}`}>
+                                {remaining < 0 ? 'Dépassement' : 'Reste'}
+                              </span>
+                              <span className={`text-[10px] font-black ${remaining < 0 ? 'text-red-500' : 'text-neutral-200'}`}>{(Math.abs(remaining) ?? 0).toLocaleString()} KM</span>
+                            </div>
+                            <div className="h-1.5 bg-neutral-900 rounded-full overflow-hidden shadow-inner">
+                              <div className={`h-full transition-all duration-1000 ${isUrgent ? 'bg-red-600' : 'bg-red-900'}`} style={{ width: `${progress}%` }} />
+                            </div>
                           </div>
-                          <div className="h-1.5 bg-neutral-900 rounded-full overflow-hidden shadow-inner">
-                            <div className={`h-full transition-all duration-1000 ${isUrgent ? 'bg-red-600' : 'bg-red-900'}`} style={{ width: `${progress}%` }} />
-                          </div>
-                        </div>
+                        )}
+                        {editingConfig && (
+                          <button
+                            onClick={saveConfigs}
+                            className="w-full py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
+                          >
+                            <Save className="w-3 h-3" /> Enregistrer
+                          </button>
+                        )}
                       </div>
                     );
                   })}
@@ -737,11 +773,14 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                 </div>
               )}
             </div>
-          ) : (
+          ) : isAdmin && tab === 'calculs' ? (
             <div className="space-y-8 sm:space-y-10">
               {/* Financial Summary Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-                <div className="bg-neutral-950 p-8 sm:p-10 rounded-[2rem] sm:rounded-[2.5rem] border border-neutral-800 relative overflow-hidden shadow-2xl">
+                <div
+                  title="Revenus encaissés - Charges spécifiques payées (Entretien/Pièces)"
+                  className="bg-neutral-950 p-8 sm:p-10 rounded-[2rem] sm:rounded-[2.5rem] border border-neutral-800 relative overflow-hidden shadow-2xl cursor-help group-hover:border-neutral-700"
+                >
                   <div className="absolute top-0 right-0 p-4 opacity-5"><Calculator className="w-32 h-32 text-white" /></div>
                   <h3 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-6">Marge d'Exploitation Nette</h3>
                   <p className={`text-4xl sm:text-5xl font-black mb-4 ${netProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
@@ -759,7 +798,10 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                   </div>
                 </div>
 
-                <div className="bg-neutral-950 p-8 sm:p-10 rounded-[2rem] sm:rounded-[2.5rem] border border-neutral-800 flex flex-col justify-center shadow-2xl">
+                <div
+                  title="Marge d'Exploitation / Nombre de mois d'activité"
+                  className="bg-neutral-950 p-8 sm:p-10 rounded-[2rem] sm:rounded-[2.5rem] border border-neutral-800 flex flex-col justify-center shadow-2xl cursor-help"
+                >
                   <div className="flex justify-between items-baseline mb-6">
                     <h3 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Rentabilité Mensuelle Moy.</h3>
                     <span className="text-[8px] bg-neutral-900 px-3 py-1 rounded-full font-black text-neutral-400 uppercase tracking-widest">{monthsActive} Mois</span>
@@ -802,7 +844,10 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                     </div>
                   </div>
 
-                  <div className="w-full lg:w-96 p-8 bg-neutral-900 rounded-[2rem] border border-neutral-800 shadow-xl text-center">
+                  <div
+                    title="(Revente Estimée + Marge d'Exploitation) - Prix d'Achat du véhicule"
+                    className="w-full lg:w-96 p-8 bg-neutral-900 rounded-[2rem] border border-neutral-800 shadow-xl text-center cursor-help"
+                  >
                     <p className="text-[9px] font-black text-neutral-500 uppercase tracking-[0.2em] mb-4">Résultat Final Projeté</p>
                     <p className={`text-3xl sm:text-4xl font-black ${projectedResult >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                       {(projectedResult ?? 0).toLocaleString()} <span className="text-sm text-neutral-600">DA</span>
@@ -813,6 +858,11 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                   </div>
                 </div>
               </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 opacity-30">
+              <Calculator className="w-12 h-12 mb-4" />
+              <p className="text-[10px] font-black uppercase tracking-[0.3em]">Module Restreint (ADMIN)</p>
             </div>
           )}
         </div>

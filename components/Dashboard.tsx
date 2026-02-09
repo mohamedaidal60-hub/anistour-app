@@ -79,10 +79,34 @@ const Dashboard: React.FC<DashboardProps> = ({ store }) => {
 
       {isAdmin && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <StatCard title="Revenus" value={stats.revenue} icon={TrendingUp} color="text-emerald-500" />
-          <StatCard title="Charges" value={stats.expenses} icon={TrendingDown} color="text-red-500" />
-          <StatCard title="Bénéfice Net" value={stats.netProfit} icon={DollarSign} color="text-blue-500" />
-          <StatCard title="Bénéfice Mensuel" value={Math.round(stats.monthlyProfit || 0)} icon={Calendar} color="text-purple-500" />
+          <StatCard
+            title="Revenus"
+            value={stats.revenue}
+            icon={TrendingUp}
+            color="text-emerald-500"
+            formula="Total des recettes encaissées (Journal + Reports)"
+          />
+          <StatCard
+            title="Charges"
+            value={stats.expenses + stats.globalExpenses}
+            icon={TrendingDown}
+            color="text-red-500"
+            formula="Charges Véhicules + Charges Agence (Dépenses Globales)"
+          />
+          <StatCard
+            title="Bénéfice Net"
+            value={stats.netProfit}
+            icon={DollarSign}
+            color="text-blue-500"
+            formula="Revenus - Total Charges - Pertes sur Ventes Archivées"
+          />
+          <StatCard
+            title="Bénéfice Mensuel"
+            value={Math.round(stats.monthlyProfit || 0)}
+            icon={Calendar}
+            color="text-purple-500"
+            formula="Bénéfice Net / Nombre de mois d'activité"
+          />
           <StatCard title="Parc Actif" value={stats.activeCount} icon={Activity} color="text-amber-500" unit=" unités" />
         </div>
       )}
@@ -168,8 +192,11 @@ const Dashboard: React.FC<DashboardProps> = ({ store }) => {
   );
 };
 
-const StatCard = ({ title, value, icon: Icon, color, unit = ` ${CURRENCY}` }: any) => (
-  <div className="bg-neutral-900/50 border border-neutral-800 p-5 rounded-3xl shadow-lg backdrop-blur-sm hover:border-neutral-700 transition-all group">
+const StatCard = ({ title, value, icon: Icon, color, unit = ` ${CURRENCY}`, formula }: any) => (
+  <div
+    title={formula}
+    className="bg-neutral-900/50 border border-neutral-800 p-5 rounded-3xl shadow-lg backdrop-blur-sm hover:border-neutral-700 transition-all group cursor-help"
+  >
     <div className={`p-3 w-fit rounded-2xl bg-neutral-950 border border-neutral-800 mb-4 ${color}`}>
       <Icon className="w-5 h-5" />
     </div>
