@@ -60,8 +60,6 @@ export interface Vehicle {
   simulatedSalePrice?: number;
   maintenanceConfigs: MaintenanceConfig[];
   documents?: VehicleDocument[];
-  status?: RentalStatus;
-  currentRental?: RentalCheckout;
 }
 
 export interface VehicleDocument {
@@ -96,7 +94,6 @@ export interface FinancialEntry {
   info?: string;
   designation?: string;
   userName?: string;
-  signature?: string;
   createdAt?: string;
 }
 
@@ -134,24 +131,4 @@ export interface GlobalExpense {
   proofPhoto?: string;
   agentName?: string;
   cashDeskId?: string;
-}
-
-export enum RentalStatus {
-  AVAILABLE = 'AVAILABLE',
-  RENTED = 'RENTED',
-  MAINTENANCE = 'MAINTENANCE'
-}
-
-export interface RentalCheckout {
-  id: string;
-  vehicleId: string;
-  clientName: string;
-  startDate: string;
-  expectedEndDate: string;
-  startMileage: number;
-  fuelLevel: number; // 0-100
-  notes?: string;
-  isCompleted: boolean;
-  endMileage?: number;
-  actualEndDate?: string;
 }

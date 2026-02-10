@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useFleetStore } from '../store.ts';
 import { Plus, Wallet, TrendingDown, Users, Camera, Upload, X, Save, Printer } from 'lucide-react';
-import { GlobalExpense } from '../types.ts';
+import { GlobalExpense, UserRole } from '../types.ts';
 
 const GlobalExpenses: React.FC<{ store: any }> = ({ store }) => {
     const [showForm, setShowForm] = useState(false);
@@ -25,7 +25,7 @@ const GlobalExpenses: React.FC<{ store: any }> = ({ store }) => {
                 id: crypto.randomUUID(),
                 type: newExpense.type,
                 amount: parseFloat(newExpense.amount),
-                date: newExpense.date,
+                date: store.currentUser?.role === UserRole.ADMIN ? newExpense.date : new Date().toISOString().split('T')[0],
                 description: newExpense.description,
                 proofPhoto: newExpense.proofPhoto || undefined,
                 agentName: store.currentUser?.name,
@@ -154,16 +154,18 @@ const GlobalExpenses: React.FC<{ store: any }> = ({ store }) => {
                                 </div>
                             </div>
 
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-neutral-500">Date</label>
-                                <input
-                                    type="date"
-                                    required
-                                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-3 text-sm focus:border-red-600 outline-none"
-                                    value={newExpense.date}
-                                    onChange={e => setNewExpense({ ...newExpense, date: e.target.value })}
-                                />
-                            </div>
+                            {store.currentUser?.role === 'ADMIN' && (
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-neutral-500">Date</label>
+                                    <input
+                                        type="date"
+                                        required
+                                        className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-3 text-sm focus:border-red-600 outline-none"
+                                        value={newExpense.date}
+                                        onChange={e => setNewExpense({ ...newExpense, date: e.target.value })}
+                                    />
+                                </div>
+                            )}
 
                             <div className="space-y-1">
                                 <label className="text-xs font-bold text-neutral-500">Description</label>

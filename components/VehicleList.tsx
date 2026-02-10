@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { useFleetStore } from '../store.ts';
-import { UserRole, Vehicle, MaintenanceConfig, EntryType, MaintenanceStatus, FinancialEntry, RentalStatus } from '../types.ts';
+import { UserRole, Vehicle, MaintenanceConfig, EntryType, MaintenanceStatus, FinancialEntry } from '../types.ts';
 import { MAINTENANCE_TYPES, CURRENCY } from '../constants.ts';
 import {
   Plus, Search, Archive, Calendar, Ruler, Car, Camera, Wrench,
@@ -72,19 +72,16 @@ const VehicleList: React.FC<VehicleListProps> = ({ store }) => {
                     className="hover:bg-neutral-800/40 transition-all cursor-pointer group"
                     onClick={() => setSelectedVehicle(vehicle)}
                   >
-                    <td className="px-8 py-5">
-                      <div className="flex items-center gap-5">
-                        <div className="w-14 h-14 rounded-2xl overflow-hidden bg-neutral-950 border border-neutral-800 shrink-0 shadow-lg relative">
+                    <td className="px-4 sm:px-8 py-4 sm:py-5">
+                      <div className="flex items-center gap-3 sm:gap-5">
+                        <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl overflow-hidden bg-neutral-950 border border-neutral-800 shrink-0 shadow-lg relative">
                           <img src={vehicle.photo || '/car-placeholder.jpg'} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className="font-black text-neutral-100 text-base uppercase tracking-tighter truncate group-hover:text-red-500 transition-colors">{vehicle.name}</p>
-                            {vehicle.status === RentalStatus.RENTED && (
-                              <span className="px-1.5 py-0.5 bg-amber-900/30 text-amber-500 text-[7px] font-black rounded border border-amber-800/50 uppercase">Loué</span>
-                            )}
+                            <p className="font-black text-neutral-100 text-xs sm:text-base uppercase tracking-tighter truncate group-hover:text-red-500 transition-colors">{vehicle.name}</p>
                           </div>
-                          <p className="text-[10px] text-neutral-500 font-black uppercase tracking-widest mt-0.5">{vehicle.registrationNumber || 'MATRICULE N/A'}</p>
+                          <p className="text-[8px] sm:text-[10px] text-neutral-500 font-black uppercase tracking-widest mt-0.5">{vehicle.registrationNumber || 'MATRICULE N/A'}</p>
                         </div>
                       </div>
                     </td>
@@ -94,16 +91,16 @@ const VehicleList: React.FC<VehicleListProps> = ({ store }) => {
                         <span className="text-xs font-bold uppercase tracking-wider">{new Date(vehicle.registrationDate).toLocaleDateString('fr-FR')}</span>
                       </div>
                     </td>
-                    <td className="px-8 py-5">
+                    <td className="px-4 sm:px-8 py-4 sm:py-5">
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-black text-white">{(vehicle.lastMileage ?? 0).toLocaleString()}</span>
-                          <span className="text-[9px] font-black text-neutral-600 uppercase tracking-widest">KM</span>
+                          <span className="text-xs sm:text-sm font-black text-white">{(vehicle.lastMileage ?? 0).toLocaleString()}</span>
+                          <span className="text-[7px] sm:text-[9px] font-black text-neutral-600 uppercase tracking-widest">KM</span>
                         </div>
                         {vehicle.mileageUpdatedBy && (
                           <div className="flex items-center gap-1 mt-1 opacity-60">
-                            <span className="text-[7px] text-neutral-500 font-black uppercase">MàJ par :</span>
-                            <span className="text-[7px] text-red-500 font-black uppercase">{vehicle.mileageUpdatedBy}</span>
+                            <span className="text-[7px] text-neutral-500 font-black uppercase">MàJ :</span>
+                            <span className="text-[7px] text-red-500 font-black uppercase truncate max-w-[50px]">{vehicle.mileageUpdatedBy}</span>
                           </div>
                         )}
                       </div>
@@ -121,22 +118,22 @@ const VehicleList: React.FC<VehicleListProps> = ({ store }) => {
                         </div>
                       )}
                     </td>
-                    <td className="px-8 py-5 text-right">
+                    <td className="px-4 sm:px-8 py-4 sm:py-5 text-right">
                       <div className="flex justify-end gap-2">
                         {store.currentUser?.role === UserRole.ADMIN && (
                           <button
                             onClick={(e) => { e.stopPropagation(); setEditingVehicle(vehicle); }}
-                            className="p-2.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-500 hover:text-amber-500 rounded-xl transition-all border border-neutral-800"
+                            className="p-2 sm:p-2.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-500 hover:text-amber-500 rounded-lg sm:rounded-xl transition-all border border-neutral-800"
                             title="Modifier"
                           >
-                            <Edit2 className="w-4 h-4" />
+                            <Edit2 className="w-3 h-3 sm:w-4 sm:h-4" />
                           </button>
                         )}
                         <button
                           onClick={(e) => { e.stopPropagation(); setSelectedVehicle(vehicle); }}
-                          className="inline-flex items-center gap-2 px-5 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all border border-neutral-800 hover:border-neutral-700"
+                          className="inline-flex items-center gap-1 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg sm:rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-[0.15em] transition-all border border-neutral-800 hover:border-neutral-700"
                         >
-                          Détails <ChevronRight className="w-3 h-3 text-red-600" />
+                          <span className="hidden sm:inline">Détails</span> <ChevronRight className="w-3 h-3 text-red-600" />
                         </button>
                       </div>
                     </td>
@@ -252,18 +249,18 @@ const AddVehicleModal = ({ onClose, onAdd, store, vehicleToEdit }: { onClose: ()
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md overflow-y-auto">
       <div className="bg-neutral-900 border border-neutral-800 rounded-[2.5rem] w-full max-w-4xl my-auto overflow-hidden shadow-2xl">
-        <div className="p-8 border-b border-neutral-800 flex justify-between items-center bg-neutral-950">
+        <div className="p-4 sm:p-8 border-b border-neutral-800 flex justify-between items-center bg-neutral-950">
           <div>
-            <h2 className="text-2xl font-black uppercase tracking-tighter text-white">
-              {vehicleToEdit ? 'Modifier le Véhicule' : 'Nouveau Véhicule'}
+            <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tighter text-white">
+              {vehicleToEdit ? 'Modifier' : 'Nouveau'}
             </h2>
-            <p className="text-neutral-500 text-[10px] font-black uppercase tracking-widest mt-1">Configuration Parc Automobile</p>
+            <p className="text-neutral-500 text-[8px] sm:text-[10px] font-black uppercase tracking-widest mt-1">Parc Automobile</p>
           </div>
-          <button onClick={onClose} className="w-12 h-12 flex items-center justify-center bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-2xl transition-all">&times;</button>
+          <button onClick={onClose} className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-xl sm:rounded-2xl transition-all">&times;</button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-10 space-y-10">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-10 space-y-8 sm:space-y-10">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-10">
             {/* Photo Column */}
             <div className="flex flex-col gap-4">
               <div
@@ -435,16 +432,10 @@ const AddVehicleModal = ({ onClose, onAdd, store, vehicleToEdit }: { onClose: ()
 
 // Detailed Modal for Vehicle Info
 const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, store: any, onClose: () => void }) => {
-  const [tab, setTab] = useState<'carnet' | 'calculs' | 'location'>('carnet');
-  const [simulatedResale, setSimulatedResale] = useState('');
+  const [tab, setTab] = useState<'carnet' | 'calculs'>('carnet');
   const [editingConfig, setEditingConfig] = useState(false);
   const [tempConfigs, setTempConfigs] = useState<MaintenanceConfig[]>(vehicle.maintenanceConfigs || []);
-
-  const saveSimulation = async () => {
-    if (!simulatedResale) return;
-    await store.updateVehicle({ ...vehicle, simulatedSalePrice: Number(simulatedResale) });
-    alert("Simulation de revente enregistrée.");
-  };
+  const [simulatedResale, setSimulatedResale] = useState(vehicle.simulatedSalePrice?.toString() || '');
 
   const isAdmin = store.currentUser?.role === UserRole.ADMIN;
 
@@ -464,6 +455,11 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
   const saveConfigs = () => {
     store.updateVehicle({ ...vehicle, maintenanceConfigs: tempConfigs });
     setEditingConfig(false);
+  };
+
+  const saveSimulation = () => {
+    store.updateVehicle({ ...vehicle, simulatedSalePrice: Number(simulatedResale) });
+    alert('Simulation enregistrée.');
   };
 
   return (
@@ -515,12 +511,6 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
           >
             <Wrench className="w-4 h-4" /> Carnet & Historique
           </button>
-          <button
-            onClick={() => setTab('location')}
-            className={`flex-1 py-5 rounded-2xl text-[11px] font-black uppercase tracking-[0.25em] flex items-center justify-center gap-3 transition-all duration-300 ${tab === 'location' ? 'bg-amber-700 text-white shadow-xl shadow-amber-900/20' : 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-900'}`}
-          >
-            <History className="w-4 h-4" /> Gestion Location
-          </button>
           {isAdmin && (
             <button
               onClick={() => setTab('calculs')}
@@ -533,102 +523,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-neutral-900 custom-scrollbar pb-20">
-          {tab === 'location' ? (
-            <div className="space-y-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className={`w-3 h-3 rounded-full animate-pulse ${vehicle.status === RentalStatus.RENTED ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-                <h3 className="text-sm font-black text-white uppercase tracking-widest">
-                  Statut : {vehicle.status === RentalStatus.RENTED ? 'En Location' : 'Disponible'}
-                </h3>
-              </div>
-
-              {vehicle.status === RentalStatus.RENTED && vehicle.currentRental ? (
-                <div className="bg-neutral-950 border border-neutral-800 rounded-3xl p-8 space-y-8 shadow-2xl">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-1">
-                      <p className="text-[8px] font-black text-neutral-600 uppercase tracking-widest">Client Actuel</p>
-                      <p className="text-lg font-black text-white uppercase">{vehicle.currentRental.clientName}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[8px] font-black text-neutral-600 uppercase tracking-widest">Échéance Retour</p>
-                      <p className="text-lg font-black text-amber-500 uppercase">{new Date(vehicle.currentRental.expectedEndDate).toLocaleDateString()}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[8px] font-black text-neutral-600 uppercase tracking-widest">KM au Départ</p>
-                      <p className="text-lg font-black text-white">{(vehicle.currentRental.startMileage ?? 0).toLocaleString()} KM</p>
-                    </div>
-                    <div className="space-y-1 text-right">
-                      <p className="text-[8px] font-black text-neutral-600 uppercase tracking-widest">Temps Restant</p>
-                      <p className="text-lg font-black text-neutral-400">
-                        {Math.max(0, Math.ceil((new Date(vehicle.currentRental.expectedEndDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24)))} Jours
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="pt-8 border-t border-neutral-900 space-y-6">
-                    <h4 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Procédure de Retour</h4>
-                    <div className="flex flex-col sm:flex-row gap-4 items-end">
-                      <div className="flex-1 space-y-2">
-                        <label className="text-[9px] font-black text-neutral-600 uppercase px-1">KM au Retour</label>
-                        <input
-                          type="number"
-                          id="return-km"
-                          placeholder={vehicle.lastMileage.toString()}
-                          className="w-full bg-neutral-900 border border-neutral-800 p-4 rounded-xl text-xl font-black text-white focus:border-red-600 outline-none"
-                        />
-                      </div>
-                      <button
-                        onClick={() => {
-                          const km = (document.getElementById('return-km') as HTMLInputElement).value;
-                          if (km && Number(km) >= vehicle.lastMileage) {
-                            store.checkinVehicle(vehicle.id, Number(km));
-                            alert("Retour enregistré.");
-                          } else alert("Erreur KM");
-                        }}
-                        className="bg-red-700 hover:bg-red-600 text-white px-8 py-5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95"
-                      >
-                        Valider le Retour
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-neutral-950 border border-neutral-800 rounded-3xl p-8 space-y-6">
-                  <h4 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-4">Mise en Location</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[9px] font-black text-neutral-600 uppercase px-1">Nom du Client</label>
-                      <input id="rent-client" type="text" className="w-full bg-neutral-900 border border-neutral-800 p-4 rounded-xl text-sm font-bold text-white outline-none focus:border-red-600" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[9px] font-black text-neutral-600 uppercase px-1">Fin Prévue</label>
-                      <input id="rent-end" type="date" className="w-full bg-neutral-900 border border-neutral-800 p-4 rounded-xl text-sm font-bold text-white outline-none focus:border-red-600" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[9px] font-black text-neutral-600 uppercase px-1">Niveau Carburant (%)</label>
-                      <input id="rent-fuel" type="number" defaultValue="100" className="w-full bg-neutral-900 border border-neutral-800 p-4 rounded-xl text-sm font-bold text-white outline-none focus:border-red-600" />
-                    </div>
-                    <div className="flex items-end">
-                      <button
-                        onClick={() => {
-                          const c = (document.getElementById('rent-client') as HTMLInputElement).value;
-                          const d = (document.getElementById('rent-end') as HTMLInputElement).value;
-                          const f = (document.getElementById('rent-fuel') as HTMLInputElement).value;
-                          if (c && d) {
-                            store.checkoutVehicle(vehicle.id, c, d, Number(f));
-                            alert("Départ validé.");
-                          } else alert("Champs obligatoires.");
-                        }}
-                        className="w-full bg-emerald-700 hover:bg-emerald-600 text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95"
-                      >
-                        Valider le Départ
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : tab === 'carnet' ? (
+          {tab === 'carnet' ? (
             <div className="space-y-8 sm:space-y-10">
               {/* Mileage Update */}
               <div className="bg-neutral-950 border border-neutral-800 rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-xl">
@@ -645,7 +540,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                   <button
                     onClick={() => {
                       const val = (document.getElementById(`mileage-update-${vehicle.id}`) as HTMLInputElement).value;
-                      if (val && Number(val) >= vehicle.lastMileage) {
+                      if (val && Number(val) >= (vehicle.lastMileage ?? 0)) {
                         store.updateVehicleMileage(vehicle.id, Number(val), store.currentUser?.name || 'Inconnu');
                         alert('Index mis à jour.');
                       } else alert('Inférieur à l\'index actuel.');
@@ -683,7 +578,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                         </div>
                         <div className="grid grid-cols-2 gap-4 mb-6">
                           <div>
-                            <p className="text-[8px] text-neutral-600 uppercase font-black text-[7px]">Intervalle</p>
+                            <p className="text-[8px] text-neutral-600 uppercase font-black">Intervalle</p>
                             {editingConfig ? (
                               <input
                                 type="number"
@@ -700,7 +595,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
                             )}
                           </div>
                           <div>
-                            <p className="text-[8px] text-neutral-600 uppercase font-black text-[7px]">Prochain</p>
+                            <p className="text-[8px] text-neutral-600 uppercase font-black">Prochain</p>
                             {editingConfig ? (
                               <input
                                 type="number"
@@ -779,7 +674,7 @@ const VehicleDetailModal = ({ vehicle, store, onClose }: { vehicle: Vehicle, sto
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
                 <div
                   title="Revenus encaissés - Charges spécifiques payées (Entretien/Pièces)"
-                  className="bg-neutral-950 p-8 sm:p-10 rounded-[2rem] sm:rounded-[2.5rem] border border-neutral-800 relative overflow-hidden shadow-2xl cursor-help group-hover:border-neutral-700"
+                  className="bg-neutral-950 p-8 sm:p-10 rounded-[2rem] sm:rounded-[2.5rem] border border-neutral-800 relative overflow-hidden shadow-2xl cursor-help"
                 >
                   <div className="absolute top-0 right-0 p-4 opacity-5"><Calculator className="w-32 h-32 text-white" /></div>
                   <h3 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-6">Marge d'Exploitation Nette</h3>

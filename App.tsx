@@ -37,13 +37,12 @@ const App: React.FC = () => {
   }
 
   // Redirect Agent from Dashboard to Entry if needed
-  // Role Protection
   if (store.currentUser?.role === UserRole.AGENT && (activeTab === 'dashboard' || activeTab === 'validation' || activeTab === 'users')) {
     setActiveTab('entry');
   }
 
   return (
-    <div className="flex h-screen bg-neutral-950 text-neutral-100 overflow-hidden relative">
+    <div className="flex h-screen bg-neutral-950 text-neutral-100 overflow-x-hidden relative">
       {/* Mobile Overlay */}
       {isSidebarOpen && (
         <div
@@ -67,9 +66,7 @@ const App: React.FC = () => {
       </aside>
 
       {/* Content Area */}
-      <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden relative">
-        <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
-
+      <div className="flex-1 min-w-0 flex flex-col h-full relative">
         <header className="p-4 border-b border-neutral-800 flex justify-between items-center bg-neutral-950/80 backdrop-blur-xl z-30 shrink-0">
           <div className="flex items-center gap-4">
             <button
@@ -103,11 +100,7 @@ const App: React.FC = () => {
               )}
             </button>
             <div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 border rounded-xl transition-all ${store.isCloudSyncing ? 'bg-amber-950/20 border-amber-900/50 text-amber-500' : 'bg-emerald-950/20 border-emerald-900/50 text-emerald-500'}`}>
-              {store.isCloudSyncing ? (
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Cloud className="w-3.5 h-3.5" />
-              )}
+              {store.isCloudSyncing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Cloud className="w-3.5 h-3.5" />}
               <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline">
                 {store.isCloudSyncing ? 'Sync...' : 'Online'}
               </span>
@@ -116,7 +109,7 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar relative z-10">
+        <main className="flex-1 overflow-y-auto custom-scrollbar relative z-10">
           <div className="p-4 sm:p-6 w-full mx-auto max-w-[1600px]">
             {activeTab === 'dashboard' && <Dashboard store={store} />}
             {activeTab === 'vehicles' && <VehicleList store={store} />}
@@ -138,7 +131,6 @@ const App: React.FC = () => {
       </div>
 
       <style>{`
-        /* Hide spin buttons */
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { 
           -webkit-appearance: none; 

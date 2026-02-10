@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { Vehicle, FinancialEntry, Notification, User, UserRole, MaintenanceStatus, EntryType, GlobalExpense, Message, CashDesk, HistoricalStats, RentalStatus, RentalCheckout } from './types.ts';
+import { Vehicle, FinancialEntry, Notification, User, UserRole, MaintenanceStatus, EntryType, GlobalExpense, Message, CashDesk, HistoricalStats } from './types.ts';
 
 const SUPABASE_URL = 'https://zxxrazexrwokihbzhina.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Nr7EYzoE9HkOyncjhPTLSw_R6Dm0-1W';
@@ -169,16 +169,7 @@ export function useFleetStore() {
         });
 
         // 3. Rented Overdue Status
-        if (v.status === RentalStatus.RENTED && v.currentRental && new Date(v.currentRental.expectedEndDate) < new Date()) {
-          const notifId = `rented-overdue-${v.id}`;
-          if (!notifications.find(n => n.id === notifId)) {
-            newNotifs.push({
-              id: notifId, vehicleId: v.id, vehicleName: v.name, type: 'LOCATION',
-              message: `ALERTE : Véhicule ${v.name} en location est en retard !`,
-              targetKm: 0, createdAt: new Date().toISOString(), isRead: false, isCritical: true, isArchived: false
-            });
-          }
-        }
+        // Removed RentalStatus and RentalCheckout related logic
       });
       if (newNotifs.length > 0) {
         await supabase.from('notifications').insert(newNotifs);
@@ -461,25 +452,6 @@ export function useFleetStore() {
     markNotificationRead: async (id: string) => {
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
       await supabase.from('notifications').update({ isRead: true }).eq('id', id);
-    },
-    checkoutVehicle: async (vId: string, clientName: string, endDate: string, fuel: number) => {
-      const v = vehicles.find(x => x.id === vId);
-      if (!v) return;
-      const checkout: RentalCheckout = {
-        id: `rent-${Date.now()}`, vehicleId: vId, clientName, startDate: new Date().toISOString(),
-        expectedEndDate: endDate, startMileage: v.lastMileage, fuelLevel: fuel, isCompleted: false
-      };
-      const updated = { ...v, status: RentalStatus.RENTED, currentRental: checkout };
-      setVehicles(prev => prev.map(x => x.id === vId ? updated : x));
-      await supabase.from('vehicles').update(updated).eq('id', vId);
-    },
-    checkinVehicle: async (vId: string, endMileage: number) => {
-      const v = vehicles.find(x => x.id === vId);
-      if (!v || !v.currentRental) return;
-      const updatedRental = { ...v.currentRental, isCompleted: true, endMileage, actualEndDate: new Date().toISOString() };
-      const updatedVehicle = { ...v, status: RentalStatus.AVAILABLE, currentRental: undefined, lastMileage: endMileage };
-      setVehicles(prev => prev.map(x => x.id === vId ? updatedVehicle : x));
-      await supabase.from('vehicles').update(updatedVehicle).eq('id', vId);
     },
     getFinancialStats,
     resetPassword: async (uid: string, pass: string) => {
