@@ -1,6 +1,7 @@
 import React from 'react';
 import { useFleetStore } from '../store.ts';
-import { Bell, AlertTriangle, ShieldAlert, X, Archive } from 'lucide-react';
+import { Bell, AlertTriangle, ShieldAlert, Archive, CheckCircle } from 'lucide-react';
+import { UserRole } from '../types.ts';
 
 interface NotificationCenterProps {
   store: ReturnType<typeof useFleetStore>;
@@ -14,8 +15,11 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ store, onClose,
     ? allNotifs.filter(n => n.isArchived)
     : allNotifs.filter(n => !n.isArchived);
 
+  const isAdmin = store.currentUser?.role === UserRole.ADMIN;
+
   const handleArchive = async (id: string) => {
-    await store.archiveNotification(id, store.currentUser?.name || 'Inconnu');
+    if (!isAdmin) return;
+    await store.archiveNotification(id, store.currentUser?.name || 'Admin');
   };
 
   return (
@@ -64,13 +68,18 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ store, onClose,
                     <h4 className="text-xl font-black text-white uppercase tracking-tight">{n.vehicleName}</h4>
                     <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest mt-1">Déclenchée le {new Date(n.createdAt).toLocaleString('fr-FR')}</p>
                   </div>
-                  {!showArchive && (
+                  {!showArchive && isAdmin && (
                     <button
                       onClick={() => handleArchive(n.id)}
-                      className="px-6 py-2.5 bg-neutral-950 hover:bg-white hover:text-black border border-neutral-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                      className="px-6 py-2.5 bg-neutral-950 hover:bg-white hover:text-black border border-neutral-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all gap-2 flex items-center"
                     >
-                      Archiver / Marquer comme fait
+                      <CheckCircle className="w-4 h-4" /> Archiver / Marquer comme fait
                     </button>
+                  )}
+                  {!showArchive && !isAdmin && (
+                    <div className="px-4 py-2 bg-neutral-950 border border-neutral-800 rounded-xl text-[9px] font-black text-neutral-600 uppercase tracking-widest flex items-center gap-2">
+                      <ShieldAlert className="w-3 h-3" /> Lecture Seule (Admin requis)
+                    </div>
                   )}
                 </div>
                 <p className="text-neutral-300 font-medium text-base mb-6">{n.message}</p>
@@ -96,7 +105,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ store, onClose,
         <div className="bg-neutral-950/40 p-8 rounded-[2rem] border border-neutral-900 flex items-start gap-4">
           <ShieldAlert className="w-6 h-6 text-red-900 mt-1 shrink-0" />
           <p className="text-[10px] text-neutral-600 font-bold uppercase tracking-widest leading-loose">
-            Note de sécurité : Les alertes sont archivées soit manuellement par un agent/admin, soit automatiquement lors de la validation d'un entretien correspondant dans le journal. L'archive constitue une preuve juridique des opérations effectuées.
+            Note de sécurité : Les alertes sont archivées uniquement par un administrateur. L'archive constitue une preuve juridique des opérations effectuées.
           </p>
         </div>
       )}
