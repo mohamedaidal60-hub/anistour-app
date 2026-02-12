@@ -314,6 +314,33 @@ export function useFleetStore() {
     }).eq('id', notifId);
   };
 
+  const postponeMaintenanceAlert = async (vehicleId: string, maintenanceType: string, additionalKm: number) => {
+    const vehicle = vehicles.find(v => v.id === vehicleId);
+    if (!vehicle) return;
+
+    // Update maintenance config
+    const newConfigs = (vehicle.maintenanceConfigs || []).map(cfg => {
+      if (cfg.type === maintenanceType) {
+        return { ...cfg, nextDueKm: cfg.nextDueKm + additionalKm };
+      }
+      return cfg;
+    });
+
+    await updateVehicle({ ...vehicle, maintenanceConfigs: newConfigs });
+
+    // Archive the current notification
+    const relatedNotif = notifications.find(n =>
+      n.vehicleId === vehicleId &&
+      n.type === maintenanceType &&
+      !n.isArchived
+    );
+
+    if (relatedNotif) {
+      await archiveNotification(relatedNotif.id, `Système (Reporté +${additionalKm} km)`);
+    }
+  };
+
+
   const getFinancialStats = () => {
     const validEntries = entries.filter(e => e.status !== MaintenanceStatus.REJECTED);
     const revenue = validEntries.filter(e => e.type === EntryType.REVENUE).reduce((sum, e) => sum + (e.amount || 0), 0);
@@ -400,7 +427,7 @@ export function useFleetStore() {
     setAppLogo: (logo: string) => { setAppLogoState(logo); setLocal('logo', logo); },
     addVehicle, updateVehicle, updateVehicleMileage, addEntry,
     addGlobalExpense, updateGlobalExpense, deleteGlobalExpense,
-    approveMaintenance, archiveNotification,
+    approveMaintenance, archiveNotification, postponeMaintenanceAlert,
     rejectMaintenance: async (id: string) => {
       setEntries(prev => prev.map(e => e.id === id ? { ...e, status: MaintenanceStatus.REJECTED } : e));
       await supabase.from('entries').update({ status: MaintenanceStatus.REJECTED }).eq('id', id);

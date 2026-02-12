@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useFleetStore } from '../store.ts';
-import { Bell, AlertTriangle, ShieldAlert, Archive, CheckCircle } from 'lucide-react';
+import { Bell, AlertTriangle, ShieldAlert, Archive, CheckCircle, Clock } from 'lucide-react';
 import { UserRole } from '../types.ts';
 
 interface NotificationCenterProps {
@@ -17,9 +17,33 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ store, onClose,
 
   const isAdmin = store.currentUser?.role === UserRole.ADMIN;
 
+  const [postponeModalOpen, setPostponeModalOpen] = useState(false);
+  const [selectedNotif, setSelectedNotif] = useState<any>(null);
+  const [additionalKm, setAdditionalKm] = useState('');
+
   const handleArchive = async (id: string) => {
     if (!isAdmin) return;
     await store.archiveNotification(id, store.currentUser?.name || 'Admin');
+  };
+
+  const openPostponeModal = (notif: any) => {
+    setSelectedNotif(notif);
+    setPostponeModalOpen(true);
+    setAdditionalKm('');
+  };
+
+  const handlePostpone = async () => {
+    if (!selectedNotif || !additionalKm || Number(additionalKm) <= 0) return;
+
+    await store.postponeMaintenanceAlert(
+      selectedNotif.vehicleId,
+      selectedNotif.type,
+      Number(additionalKm)
+    );
+
+    setPostponeModalOpen(false);
+    setSelectedNotif(null);
+    setAdditionalKm('');
   };
 
   return (
@@ -69,12 +93,20 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ store, onClose,
                     <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest mt-1">Déclenchée le {new Date(n.createdAt).toLocaleString('fr-FR')}</p>
                   </div>
                   {!showArchive && isAdmin && (
-                    <button
-                      onClick={() => handleArchive(n.id)}
-                      className="px-6 py-2.5 bg-neutral-950 hover:bg-white hover:text-black border border-neutral-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all gap-2 flex items-center"
-                    >
-                      <CheckCircle className="w-4 h-4" /> Archiver / Marquer comme fait
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => openPostponeModal(n)}
+                        className="px-4 py-2.5 bg-amber-950/30 hover:bg-amber-900/50 border border-amber-800/50 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all gap-2 flex items-center text-amber-500"
+                      >
+                        <Clock className="w-4 h-4" /> Reporter
+                      </button>
+                      <button
+                        onClick={() => handleArchive(n.id)}
+                        className="px-4 py-2.5 bg-neutral-950 hover:bg-white hover:text-black border border-neutral-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all gap-2 flex items-center"
+                      >
+                        <CheckCircle className="w-4 h-4" /> Archiver
+                      </button>
+                    </div>
                   )}
                   {!showArchive && !isAdmin && (
                     <div className="px-4 py-2 bg-neutral-950 border border-neutral-800 rounded-xl text-[9px] font-black text-neutral-600 uppercase tracking-widest flex items-center gap-2">
@@ -107,6 +139,56 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ store, onClose,
           <p className="text-[10px] text-neutral-600 font-bold uppercase tracking-widest leading-loose">
             Note de sécurité : Les alertes sont archivées uniquement par un administrateur. L'archive constitue une preuve juridique des opérations effectuées.
           </p>
+        </div>
+      )}
+
+      {/* Modal de report d'échéance */}
+      {postponeModalOpen && selectedNotif && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-[2rem] p-8 max-w-md w-full shadow-2xl animate-in zoom-in duration-300">
+            <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">Reporter l'échéance</h3>
+            <p className="text-sm text-neutral-400 mb-6">
+              Véhicule: <span className="text-white font-bold">{selectedNotif.vehicleName}</span><br />
+              Type: <span className="text-white font-bold">{selectedNotif.type}</span>
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest block mb-2">
+                  Kilométrage supplémentaire
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1000"
+                  placeholder="Ex: 5000"
+                  value={additionalKm}
+                  onChange={(e) => setAdditionalKm(e.target.value)}
+                  className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-2xl text-2xl font-black text-amber-500 outline-none focus:border-amber-600 transition-all"
+                  autoFocus
+                />
+                <p className="text-[9px] text-neutral-600 mt-2 uppercase tracking-widest">
+                  Nouvelle échéance: <span className="text-amber-500 font-black">{((selectedNotif.targetKm ?? 0) + Number(additionalKm || 0)).toLocaleString()} KM</span>
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={handlePostpone}
+                  disabled={!additionalKm || Number(additionalKm) <= 0}
+                  className="flex-1 py-4 bg-amber-700 hover:bg-amber-600 disabled:bg-neutral-800 disabled:text-neutral-600 text-white rounded-2xl font-black uppercase text-sm tracking-widest transition-all disabled:cursor-not-allowed"
+                >
+                  Confirmer le report
+                </button>
+                <button
+                  onClick={() => setPostponeModalOpen(false)}
+                  className="px-6 py-4 bg-neutral-950 hover:bg-neutral-800 border border-neutral-800 text-neutral-400 rounded-2xl font-black uppercase text-sm tracking-widest transition-all"
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
