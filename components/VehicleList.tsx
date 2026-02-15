@@ -18,6 +18,8 @@ const VehicleList: React.FC<VehicleListProps> = ({ store }) => {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [search, setSearch] = useState('');
+  const [editingMileageId, setEditingMileageId] = useState<string | null>(null);
+  const [tempMileage, setTempMileage] = useState('');
 
   const activeVehicles = store.vehicles.filter(v =>
     !v.isArchived &&
@@ -91,19 +93,63 @@ const VehicleList: React.FC<VehicleListProps> = ({ store }) => {
                         <span className="text-xs font-bold uppercase tracking-wider">{new Date(vehicle.registrationDate).toLocaleDateString('fr-FR')}</span>
                       </div>
                     </td>
-                    <td className="px-4 sm:px-8 py-4 sm:py-5">
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs sm:text-sm font-black text-white">{(vehicle.lastMileage ?? 0).toLocaleString()}</span>
-                          <span className="text-[7px] sm:text-[9px] font-black text-neutral-600 uppercase tracking-widest">KM</span>
+                    <td className="px-4 sm:px-8 py-4 sm:py-5" onClick={(e) => e.stopPropagation()}>
+                      {editingMileageId === vehicle.id ? (
+                        <div className="flex items-center gap-2 animate-in fade-in zoom-in duration-200">
+                          <input
+                            type="number"
+                            className="w-24 bg-neutral-900 border border-neutral-800 rounded-lg px-2 py-1 text-sm font-black text-white focus:border-red-600 outline-none"
+                            value={tempMileage}
+                            onChange={(e) => setTempMileage(e.target.value)}
+                            autoFocus
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (tempMileage && Number(tempMileage) >= (vehicle.lastMileage ?? 0)) {
+                                store.updateVehicleMileage(vehicle.id, Number(tempMileage), store.currentUser?.name || 'Admin');
+                                setEditingMileageId(null);
+                              } else alert('Index invalide (doit être supérieur à l\'actuel)');
+                            }}
+                            className="p-1.5 bg-emerald-900/30 text-emerald-500 rounded-lg hover:bg-emerald-900/50 border border-emerald-900/30 transition-colors"
+                          >
+                            <CheckSquare className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setEditingMileageId(null); }}
+                            className="p-1.5 text-neutral-500 hover:text-white transition-colors"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
                         </div>
-                        {vehicle.mileageUpdatedBy && (
-                          <div className="flex items-center gap-1 mt-1 opacity-60">
-                            <span className="text-[7px] text-neutral-500 font-black uppercase">MàJ :</span>
-                            <span className="text-[7px] text-red-500 font-black uppercase truncate max-w-[50px]">{vehicle.mileageUpdatedBy}</span>
+                      ) : (
+                        <div
+                          className="flex flex-col group/edit cursor-pointer hover:bg-neutral-900/50 p-2 -m-2 rounded-lg transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (store.currentUser?.role === UserRole.ADMIN) {
+                              setEditingMileageId(vehicle.id);
+                              setTempMileage((vehicle.lastMileage ?? 0).toString());
+                            }
+                          }}
+                          title={store.currentUser?.role === UserRole.ADMIN ? "Cliquez pour modifier le kilométrage" : ""}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs sm:text-sm font-black text-white group-hover/edit:text-red-500 transition-colors">{(vehicle.lastMileage ?? 0).toLocaleString()}</span>
+                            <span className="text-[7px] sm:text-[9px] font-black text-neutral-600 uppercase tracking-widest">KM</span>
+                            {store.currentUser?.role === UserRole.ADMIN && (
+                              <Edit2 className="w-3 h-3 text-neutral-700 opacity-0 group-hover/edit:opacity-100 transition-opacity transform group-hover/edit:scale-110" />
+                            )}
                           </div>
-                        )}
-                      </div>
+                          {vehicle.mileageUpdatedBy && (
+                            <div className="flex items-center gap-1 mt-1 opacity-60">
+                              <span className="text-[7px] text-neutral-500 font-black uppercase">MàJ :</span>
+                              <span className="text-[7px] text-red-500 font-black uppercase truncate max-w-[50px]">{vehicle.mileageUpdatedBy}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td className="px-8 py-5 hidden lg:table-cell text-center">
                       {alertCount > 0 ? (
@@ -210,8 +256,8 @@ const AddVehicleModal = ({ onClose, onAdd, store, vehicleToEdit }: { onClose: ()
     } else {
       setSelectedMaintenances(prev => [...prev, {
         type,
-        intervalKm: 10000,
-        nextDueKm: Number(lastMileage) + 10000,
+        intervalKm: 7000,
+        nextDueKm: Number(lastMileage) + 7000,
         lastPerformedKm: Number(lastMileage)
       }]);
     }

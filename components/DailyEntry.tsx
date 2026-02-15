@@ -207,7 +207,7 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
                       onClick={() => setUsePersonalCaisse(true)}
                       className={`p-4 rounded-2xl border cursor-pointer transition-all ${usePersonalCaisse ? 'bg-red-950/20 border-red-600 shadow-lg' : 'bg-neutral-950 border-neutral-800 opacity-50'}`}
                     >
-                      <p className="text-[11px] font-black text-white uppercase tracking-widest text-center">Ma Caisse ({myCaisse.userName})</p>
+                      <p className="text-[11px] font-black text-white uppercase tracking-widest text-center">Ma Caisse ({myCaisse.userName}) - {(myCaisse.balance ?? 0).toLocaleString()} {CURRENCY}</p>
                     </div>
                   )}
                   {activeForm === 'REVENUE' && (
@@ -266,7 +266,7 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
                       />
                     </div>
 
-                    <div className="space-y-2">
+                    <div className={activeForm === 'EXPENSE_GLOBAL' ? 'hidden' : 'space-y-2'}>
                       <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest px-1">Index Compteur</label>
                       <input
                         required={activeForm !== 'EXPENSE_GLOBAL'}
@@ -442,7 +442,7 @@ const DailyEntry: React.FC<DailyEntryProps> = ({ store }) => {
           )}
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 
